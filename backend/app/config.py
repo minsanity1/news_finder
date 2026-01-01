@@ -11,6 +11,10 @@ class Settings(BaseSettings):
     google_api_keys: str = ""  # Multiple keys: "key1,key2,key3"
     google_api_key: str = ""   # Single key (legacy support)
 
+    # Naver API (https://developers.naver.com)
+    naver_client_id: str = ""
+    naver_client_secret: str = ""
+
     # AI 설정
     ai_model: str = "gemini-2.0-flash"
     ai_max_tokens: int = 500
@@ -27,6 +31,10 @@ class Settings(BaseSettings):
         if self.google_api_key and self.google_api_key not in keys:
             keys.append(self.google_api_key)
         return keys
+
+    def has_naver_api(self) -> bool:
+        """Check if Naver API is configured"""
+        return bool(self.naver_client_id and self.naver_client_secret)
 
     # 수집 설정
     collect_interval_minutes: int = 60

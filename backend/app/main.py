@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from app.config import get_settings
 from app.database import init_db
-from app.api import news, filters, ai, collector
+from app.api import news, filters, ai, collector, search
 from app.scheduler.jobs import start_scheduler, shutdown_scheduler
 
 
@@ -42,6 +42,7 @@ app.include_router(news.router, prefix="/api/news", tags=["news"])
 app.include_router(filters.router, prefix="/api/filters", tags=["filters"])
 app.include_router(ai.router, prefix="/api/ai", tags=["ai"])
 app.include_router(collector.router, prefix="/api/collector", tags=["collector"])
+app.include_router(search.router, prefix="/api/search", tags=["search"])
 
 
 @app.get("/")

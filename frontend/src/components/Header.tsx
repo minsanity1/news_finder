@@ -1,7 +1,10 @@
-import { RefreshCw, Settings, AlertTriangle } from 'lucide-react';
+import { useState } from 'react';
+import { RefreshCw, Settings, AlertTriangle, Search } from 'lucide-react';
 import { useCollectorRun, useCollectorStatus, useAIUsage } from '../hooks/useAIAnalysis';
+import SearchModal from './SearchModal';
 
 export default function Header() {
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { mutate: runCollector, isPending } = useCollectorRun();
   const { data: status } = useCollectorStatus();
   const { data: aiUsage } = useAIUsage();
@@ -65,12 +68,22 @@ export default function Header() {
               {isPending ? 'Collecting...' : 'Collect'}
             </button>
 
+            <button
+              onClick={() => setIsSearchOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <Search className="w-4 h-4" />
+              Search
+            </button>
+
             <button className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
               <Settings className="w-5 h-5" />
             </button>
           </div>
         </div>
       </header>
+
+      <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </>
   );
 }

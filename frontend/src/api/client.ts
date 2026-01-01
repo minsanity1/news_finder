@@ -128,6 +128,46 @@ export const filterApi = {
   },
 };
 
+// Search API
+export const searchApi = {
+  getStatus: async (): Promise<{ naver_api_configured: boolean; naver_api_url?: string }> => {
+    const response = await api.get('/search/status');
+    return response.data;
+  },
+
+  searchNaver: async (query: string, maxResults: number = 100, saveToDb: boolean = true): Promise<{
+    query: string;
+    total_found: number;
+    saved_count: number;
+    items: Array<{
+      title: string;
+      summary: string;
+      url: string;
+      source: string;
+      category: string;
+      published_at: string | null;
+    }>;
+  }> => {
+    const response = await api.post('/search/naver', {
+      query,
+      max_results: maxResults,
+      save_to_db: saveToDb,
+    });
+    return response.data;
+  },
+
+  searchKeywords: async (keywords: string[], maxPerKeyword: number = 50): Promise<{
+    keywords: string[];
+    total_found: number;
+    saved_count: number;
+  }> => {
+    const response = await api.post('/search/naver/keywords', keywords, {
+      params: { max_per_keyword: maxPerKeyword, save_to_db: true }
+    });
+    return response.data;
+  },
+};
+
 // AI API
 export const aiApi = {
   analyze: async (newsId: number, prompt?: string, presetKey?: string): Promise<AIAnalysisResult> => {
