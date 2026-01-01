@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { X, Search, Loader2, ExternalLink, Filter } from 'lucide-react';
+import { X, Search, Loader2, ExternalLink, Filter, ChevronDown, ChevronUp } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { searchApi } from '../api/client';
+import { searchApi, filterApi } from '../api/client';
 
 interface SearchModalProps {
   isOpen: boolean;
@@ -24,11 +24,19 @@ const AVAILABLE_SOURCES = [
   { id: 'YTN', name: 'YTN' },
 ];
 
+const PRESET_LABELS: Record<string, string> = {
+  failure: '실패/위기',
+  success: '성공/흥행',
+  comeback: '회생/턴어라운드',
+  brand: '브랜드/기업',
+};
+
 export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
-  const [query, setQuery] = useState('');
-  const [maxResults, setMaxResults] = useState(100);
+  const [maxPerKeyword, setMaxPerKeyword] = useState(50);
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [showSourceFilter, setShowSourceFilter] = useState(false);
+  const [selectedPresets, setSelectedPresets] = useState<string[]>(['failure']);
+  const [showKeywordDetails, setShowKeywordDetails] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: status } = useQuery({
@@ -37,8 +45,29 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
     enabled: isOpen,
   });
 
+  const { data: defaultKeywords } = useQuery({
+    queryKey: ['defaultKeywords'],
+    queryFn: () => filterApi.getDefaultKeywords(),
+    enabled: isOpen,
+    staleTime: Infinity,
+  });
+
   const searchMutation = useMutation({
-    mutationFn: () => searchApi.searchNaver(query, maxResults, true, selectedSources),
+    mutationFn: () => {
+      // 선택된 프리셋의 키워드 수집
+      const keywords: string[] = [];
+      if (defaultKeywords?.include_keywords) {
+        for (const preset of selectedPresets) {
+          const presetKeywords = defaultKeywords.include_keywords[preset];
+          if (presetKeywords) {
+            keywords.push(...presetKeywords);
+          }
+        }
+      }
+      // 중복 제거
+      const uniqueKeywords = [...new Set(keywords)];
+      return searchApi.searchKeywords(uniqueKeywords, maxPerKeyword, selectedSources);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['news'] });
     },
@@ -48,9 +77,17 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (query.trim()) {
+    if (selectedPresets.length > 0) {
       searchMutation.mutate();
     }
+  };
+
+  const togglePreset = (presetKey: string) => {
+    setSelectedPresets(prev =>
+      prev.includes(presetKey)
+        ? prev.filter(p => p !== presetKey)
+        : [...prev, presetKey]
+    );
   };
 
   const toggleSource = (sourceId: string) => {
@@ -69,6 +106,21 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
     setSelectedSources([]);
   };
 
+  // 선택된 프리셋의 키워드 계산
+  const getSelectedKeywords = (): string[] => {
+    if (!defaultKeywords?.include_keywords) return [];
+    const keywords: string[] = [];
+    for (const preset of selectedPresets) {
+      const presetKeywords = defaultKeywords.include_keywords[preset];
+      if (presetKeywords) {
+        keywords.push(...presetKeywords);
+      }
+    }
+    return [...new Set(keywords)];
+  };
+
+  const selectedKeywords = getSelectedKeywords();
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
@@ -84,7 +136,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto max-h-[calc(80vh-140px)]">
           {status && !status.naver_api_configured ? (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
               <p className="text-amber-800 text-sm">
@@ -105,36 +157,78 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
           ) : (
             <>
               <form onSubmit={handleSearch} className="space-y-4">
+                {/* 프리셋 선택 */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    검색어
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    검색 프리셋 선택
                   </label>
-                  <input
-                    type="text"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="예: 스타벅스 폐점, 치킨 프랜차이즈 위기"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    disabled={searchMutation.isPending}
-                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    {Object.entries(PRESET_LABELS).map(([key, label]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => togglePreset(key)}
+                        className={`p-3 rounded-lg border text-left transition-colors ${
+                          selectedPresets.includes(key)
+                            ? 'bg-blue-50 border-blue-500 text-blue-800'
+                            : 'bg-white border-gray-300 hover:bg-gray-50'
+                        }`}
+                        disabled={searchMutation.isPending}
+                      >
+                        <div className="font-medium">{label}</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {defaultKeywords?.include_keywords?.[key]?.length || 0}개 키워드
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
+
+                {/* 선택된 키워드 표시 */}
+                {selectedKeywords.length > 0 && (
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setShowKeywordDetails(!showKeywordDetails)}
+                      className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-800"
+                    >
+                      {showKeywordDetails ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      선택된 키워드 {selectedKeywords.length}개 보기
+                    </button>
+                    {showKeywordDetails && (
+                      <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+                        <div className="flex flex-wrap gap-1">
+                          {selectedKeywords.map((keyword) => (
+                            <span
+                              key={keyword}
+                              className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded"
+                            >
+                              {keyword}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    최대 결과 수
+                    키워드당 최대 결과 수
                   </label>
                   <select
-                    value={maxResults}
-                    onChange={(e) => setMaxResults(Number(e.target.value))}
+                    value={maxPerKeyword}
+                    onChange={(e) => setMaxPerKeyword(Number(e.target.value))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     disabled={searchMutation.isPending}
                   >
+                    <option value={30}>30개</option>
                     <option value={50}>50개</option>
                     <option value={100}>100개</option>
-                    <option value={200}>200개</option>
-                    <option value={500}>500개</option>
-                    <option value={1000}>1000개 (최대)</option>
                   </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    예상 검색: 최대 {selectedKeywords.length * maxPerKeyword}개 (키워드 {selectedKeywords.length}개 × {maxPerKeyword}개)
+                  </p>
                 </div>
 
                 {/* Source Filter */}
@@ -197,7 +291,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
                 <button
                   type="submit"
-                  disabled={!query.trim() || searchMutation.isPending}
+                  disabled={selectedPresets.length === 0 || searchMutation.isPending}
                   className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {searchMutation.isPending ? (
@@ -219,6 +313,8 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
                 <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
                   <p className="text-green-800">
                     <strong>검색 완료!</strong>
+                    <br />
+                    검색된 키워드: {searchMutation.data.keywords.length}개
                     <br />
                     검색 결과: {searchMutation.data.total_found}개
                     {searchMutation.data.filtered_count !== searchMutation.data.total_found && (
@@ -244,8 +340,8 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
         {/* Footer */}
         <div className="px-6 py-4 border-t bg-gray-50">
           <p className="text-xs text-gray-500">
-            네이버 뉴스 검색 API를 사용하여 과거 뉴스를 검색하고 DB에 저장합니다.
-            RSS보다 더 많은 과거 기사를 가져올 수 있습니다.
+            프리셋에 정의된 키워드로 네이버 뉴스를 검색하고 DB에 저장합니다.
+            각 키워드별로 최신 뉴스를 가져옵니다.
           </p>
         </div>
       </div>

@@ -176,11 +176,16 @@ async def quick_search_naver(
     return await search_naver(request, db)
 
 
+class KeywordSearchRequest(BaseModel):
+    keywords: List[str]
+    max_per_keyword: int = 50
+    save_to_db: bool = True
+    filter_sources: Optional[List[str]] = None  # 언론사 필터
+
+
 @router.post("/naver/keywords")
 async def search_multiple_keywords(
-    keywords: List[str],
-    max_per_keyword: int = 50,
-    save_to_db: bool = True,
+    request: KeywordSearchRequest,
     db: AsyncSession = Depends(get_db)
 ):
     """여러 키워드로 네이버 뉴스 검색"""
@@ -193,15 +198,30 @@ async def search_multiple_keywords(
         )
 
     items = await collector.search_multiple_keywords(
-        keywords=keywords,
-        max_per_keyword=max_per_keyword
+        keywords=request.keywords,
+        max_per_keyword=request.max_per_keyword
     )
+
+    total_found = len(items)
+
+    # 언론사명 추출 및 source 업데이트
+    for item in items:
+        detected_source = extract_source_name(item["url"], item["title"])
+        item["source"] = detected_source
+
+    # 언론사 필터링
+    filtered_items = items
+    if request.filter_sources and len(request.filter_sources) > 0:
+        filtered_items = [
+            item for item in items
+            if item["source"] in request.filter_sources
+        ]
 
     saved_count = 0
 
-    if save_to_db and items:
+    if request.save_to_db and filtered_items:
         news_repo = NewsRepository(db)
-        for item in items:
+        for item in filtered_items:
             try:
                 existing = await news_repo.get_by_url(item["url"])
                 if not existing:
@@ -210,7 +230,7 @@ async def search_multiple_keywords(
                         "summary": item["summary"],
                         "url": item["url"],
                         "source": item["source"],
-                        "category": "검색",
+                        "category": "키워드 검색",
                         "published_at": item["published_at"],
                         "collected_at": datetime.utcnow()
                     })
@@ -219,7 +239,8 @@ async def search_multiple_keywords(
                 print(f"[Search] Error saving: {e}")
 
     return {
-        "keywords": keywords,
-        "total_found": len(items),
+        "keywords": request.keywords,
+        "total_found": total_found,
+        "filtered_count": len(filtered_items),
         "saved_count": saved_count
     }

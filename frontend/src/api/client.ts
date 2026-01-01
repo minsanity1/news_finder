@@ -138,13 +138,21 @@ export const searchApi = {
     return response.data;
   },
 
-  searchKeywords: async (keywords: string[], maxPerKeyword: number = 50): Promise<{
+  searchKeywords: async (
+    keywords: string[],
+    maxPerKeyword: number = 50,
+    filterSources: string[] = []
+  ): Promise<{
     keywords: string[];
     total_found: number;
+    filtered_count: number;
     saved_count: number;
   }> => {
-    const response = await api.post('/search/naver/keywords', keywords, {
-      params: { max_per_keyword: maxPerKeyword, save_to_db: true }
+    const response = await api.post('/search/naver/keywords', {
+      keywords,
+      max_per_keyword: maxPerKeyword,
+      save_to_db: true,
+      filter_sources: filterSources.length > 0 ? filterSources : undefined,
     });
     return response.data;
   },
