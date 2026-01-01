@@ -88,10 +88,21 @@ export interface NewsFilter {
   limit: number;
 }
 
+export interface APIKeyUsage {
+  index: number;
+  used: number;
+  remaining: number;
+  is_current: boolean;
+  key_preview: string;
+}
+
 export interface AIUsage {
   today: number;
   total: number;
   daily_limit: number;
   remaining: number;
   api_key_configured: boolean;
+  keys?: APIKeyUsage[];
+  total_keys?: number;
+  current_key_index?: number;
 }

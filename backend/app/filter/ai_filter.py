@@ -1,11 +1,13 @@
 import json
-from typing import Optional
+from typing import Optional, Tuple
 from datetime import datetime
 
 from google import genai
 from google.genai import types
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
+from app.filter.api_key_manager import get_api_key_manager
 
 settings = get_settings()
 
@@ -65,13 +67,15 @@ AI_PRESETS = {
 
 class AIFilter:
     def __init__(self):
-        self.client = None
+        self._clients = {}  # Cache clients per key
         self.model = settings.ai_model
+        self.key_manager = get_api_key_manager()
 
-    def _get_client(self):
-        if self.client is None:
-            self.client = genai.Client(api_key=settings.google_api_key)
-        return self.client
+    def _get_client(self, api_key: str):
+        """Get or create a client for the given API key"""
+        if api_key not in self._clients:
+            self._clients[api_key] = genai.Client(api_key=api_key)
+        return self._clients[api_key]
 
     def _parse_response(self, text: str) -> dict:
         """AI 응답에서 JSON 파싱"""
@@ -98,9 +102,12 @@ class AIFilter:
         self,
         news_title: str,
         news_summary: str,
-        prompt: str
-    ) -> dict:
-        """단일 뉴스 AI 분석"""
+        prompt: str,
+        session: Optional[AsyncSession] = None
+    ) -> Tuple[dict, int]:
+        """단일 뉴스 AI 분석
+        Returns: (result_dict, key_index_used)
+        """
         full_prompt = f"""{prompt}
 
 뉴스 제목: {news_title}
@@ -116,8 +123,25 @@ class AIFilter:
     "key_points": ["핵심포인트1", "핵심포인트2", "핵심포인트3"]
 }}"""
 
+        # Get available API key
+        if session:
+            api_key, key_index = await self.key_manager.get_available_key(session)
+        else:
+            api_key = self.key_manager.get_current_key()
+            key_index = self.key_manager.current_key_index
+
+        if not api_key:
+            return {
+                "is_relevant": False,
+                "score": 0,
+                "category": "other",
+                "reason": "모든 API 키의 일일 한도가 초과되었습니다",
+                "youtube_potential": "낮음",
+                "key_points": []
+            }, -1
+
         try:
-            client = self._get_client()
+            client = self._get_client(api_key)
             response = client.models.generate_content(
                 model=self.model,
                 contents=full_prompt,
@@ -127,34 +151,48 @@ class AIFilter:
                 )
             )
 
-            return self._parse_response(response.text)
+            return self._parse_response(response.text), key_index
 
         except Exception as e:
-            print(f"[AI Filter] API error: {e}")
+            error_msg = str(e)
+            print(f"[AI Filter] API error with key {key_index}: {e}")
+
+            # Check if it's a rate limit error, try next key
+            if "429" in error_msg or "quota" in error_msg.lower() or "rate" in error_msg.lower():
+                if session and key_index >= 0:
+                    # Mark current key as exhausted by trying next one
+                    next_key, next_index = await self.key_manager.get_available_key(session)
+                    if next_key and next_index != key_index:
+                        print(f"[AI Filter] Retrying with key {next_index}")
+                        return await self.analyze(news_title, news_summary, prompt, session)
+
             return {
                 "is_relevant": False,
                 "score": 0,
                 "category": "other",
-                "reason": f"API 오류: {str(e)}",
+                "reason": f"API 오류: {error_msg}",
                 "youtube_potential": "낮음",
                 "key_points": []
-            }
+            }, key_index
 
     async def batch_analyze(
         self,
         news_list: list,
-        prompt: str
+        prompt: str,
+        session: Optional[AsyncSession] = None
     ) -> list:
         """여러 뉴스 배치 분석"""
         results = []
 
         for news in news_list:
-            result = await self.analyze(
+            result, key_index = await self.analyze(
                 news.get("title", ""),
                 news.get("summary", ""),
-                prompt
+                prompt,
+                session
             )
             result["news_id"] = news.get("id")
+            result["key_index"] = key_index
             results.append(result)
 
         return results

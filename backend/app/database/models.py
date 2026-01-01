@@ -99,5 +99,6 @@ class AIAnalysisLog(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     news_id = Column(Integer, ForeignKey("news.id"))
     model = Column(String(50), default="gemini-2.0-flash")
+    api_key_index = Column(Integer, default=0)  # Which key was used (0, 1, 2...)
     input_chars = Column(Integer)
     created_at = Column(DateTime, default=datetime.utcnow)

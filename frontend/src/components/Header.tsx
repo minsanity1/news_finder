@@ -45,8 +45,14 @@ export default function Header() {
 
           <div className="flex items-center gap-4">
             {aiUsage && (
-              <div className={`text-sm ${aiUsage.api_key_configured ? 'text-gray-600' : 'text-amber-600'}`}>
-                AI: {aiUsage.api_key_configured ? `${aiUsage.today}/${aiUsage.daily_limit}` : 'Not configured'}
+              <div className={`text-sm ${aiUsage.api_key_configured ? 'text-gray-600' : 'text-amber-600'}`} title={
+                aiUsage.keys && aiUsage.keys.length > 1
+                  ? `Keys: ${aiUsage.keys.map((k, i) => `#${i + 1}: ${k.used}/${k.used + k.remaining}`).join(', ')}`
+                  : undefined
+              }>
+                AI: {aiUsage.api_key_configured
+                  ? `${aiUsage.today}/${aiUsage.daily_limit}${aiUsage.total_keys && aiUsage.total_keys > 1 ? ` (${aiUsage.total_keys} keys)` : ''}`
+                  : 'Not configured'}
               </div>
             )}
 

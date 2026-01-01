@@ -4,8 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.database import get_db
-from app.database.repository import NewsRepository, AIAnalysisLogRepository
+from app.database.repository import NewsRepository
+from app.database.models import AIAnalysisLog
 from app.filter.ai_filter import AIFilter, AI_PRESETS
+from app.filter.api_key_manager import get_api_key_manager
 from app.config import get_settings
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -42,7 +44,6 @@ async def analyze_single(
 ):
     """단일 뉴스 AI 분석"""
     news_repo = NewsRepository(db)
-    log_repo = AIAnalysisLogRepository(db)
 
     # 뉴스 조회
     news = await news_repo.get_by_id(request.news_id)
@@ -62,12 +63,13 @@ async def analyze_single(
             detail="Either prompt or preset_key is required"
         )
 
-    # AI 분석 실행
+    # AI 분석 실행 (with session for key rotation)
     ai_filter = AIFilter()
-    result = await ai_filter.analyze(
+    result, key_index = await ai_filter.analyze(
         news.title,
         news.summary or "",
-        prompt
+        prompt,
+        db
     )
 
     # 뉴스에 분석 결과 저장
@@ -81,11 +83,15 @@ async def analyze_single(
         "ai_analyzed_at": datetime.utcnow()
     })
 
-    # 분석 로그 저장
-    await log_repo.create({
-        "news_id": request.news_id,
-        "input_chars": len(news.title) + len(news.summary or "")
-    })
+    # 분석 로그 저장 (with key index)
+    if key_index >= 0:
+        log = AIAnalysisLog(
+            news_id=request.news_id,
+            api_key_index=key_index,
+            input_chars=len(news.title) + len(news.summary or "")
+        )
+        db.add(log)
+        await db.commit()
 
     return AnalysisResult(
         news_id=request.news_id,
@@ -105,7 +111,6 @@ async def analyze_batch(
 ):
     """배치 AI 분석"""
     news_repo = NewsRepository(db)
-    log_repo = AIAnalysisLogRepository(db)
 
     # 프롬프트 결정
     prompt = request.prompt
@@ -134,13 +139,14 @@ async def analyze_batch(
     if not news_list:
         raise HTTPException(status_code=404, detail="No valid news found")
 
-    # AI 분석 실행
+    # AI 분석 실행 (with session for key rotation)
     ai_filter = AIFilter()
-    results = await ai_filter.batch_analyze(news_list, prompt)
+    results = await ai_filter.batch_analyze(news_list, prompt, db)
 
     # 결과 저장
     for result in results:
         news_id = result.get("news_id")
+        key_index = result.get("key_index", 0)
         if news_id:
             await news_repo.update(news_id, {
                 "ai_analyzed": True,
@@ -152,13 +158,17 @@ async def analyze_batch(
                 "ai_analyzed_at": datetime.utcnow()
             })
 
-            # 분석 로그 저장
+            # 분석 로그 저장 (with key index)
             news_item = next((n for n in news_list if n["id"] == news_id), None)
-            if news_item:
-                await log_repo.create({
-                    "news_id": news_id,
-                    "input_chars": len(news_item["title"]) + len(news_item["summary"])
-                })
+            if news_item and key_index >= 0:
+                log = AIAnalysisLog(
+                    news_id=news_id,
+                    api_key_index=key_index,
+                    input_chars=len(news_item["title"]) + len(news_item["summary"])
+                )
+                db.add(log)
+
+    await db.commit()
 
     return {
         "message": f"Analyzed {len(results)} news items",
@@ -180,18 +190,21 @@ async def analyze_batch(
 @router.get("/usage")
 async def get_usage(db: AsyncSession = Depends(get_db)):
     """API 사용량 통계"""
-    log_repo = AIAnalysisLogRepository(db)
-    stats = await log_repo.get_usage_stats()
+    key_manager = get_api_key_manager()
+    usage_stats = await key_manager.get_all_usage_today(db)
 
     # API 키 설정 여부 확인
-    api_key_configured = bool(settings.google_api_key and len(settings.google_api_key) > 10)
+    api_key_configured = key_manager.has_keys()
 
     return {
-        "today": stats["today"],
-        "total": stats["total"],
-        "daily_limit": 1500,  # Gemini Flash 무료 티어
-        "remaining": max(0, 1500 - stats["today"]),
-        "api_key_configured": api_key_configured
+        "today": usage_stats["total_used_today"],
+        "total": usage_stats["total_used_today"],  # For backwards compatibility
+        "daily_limit": usage_stats["daily_limit_per_key"] * usage_stats["total_keys"],
+        "remaining": usage_stats["total_remaining_today"],
+        "api_key_configured": api_key_configured,
+        "keys": usage_stats["keys"],
+        "total_keys": usage_stats["total_keys"],
+        "current_key_index": usage_stats["current_key_index"]
     }
 
 
