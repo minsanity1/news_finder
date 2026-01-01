@@ -49,6 +49,8 @@ class NewsListResponse(BaseModel):
 @router.get("", response_model=NewsListResponse)
 async def get_news_list(
     keyword: Optional[str] = None,
+    include_keywords: Optional[str] = None,  # comma separated
+    exclude_keywords: Optional[str] = None,  # comma separated
     source: Optional[str] = None,
     category: Optional[str] = None,
     ai_min_score: Optional[int] = None,
@@ -80,8 +82,20 @@ async def get_news_list(
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid to_date format")
 
+    # 키워드 파싱
+    parsed_include = None
+    parsed_exclude = None
+
+    if include_keywords:
+        parsed_include = [k.strip() for k in include_keywords.split(',') if k.strip()]
+
+    if exclude_keywords:
+        parsed_exclude = [k.strip() for k in exclude_keywords.split(',') if k.strip()]
+
     news_list, total = await repo.get_all(
         keyword=keyword,
+        include_keywords=parsed_include,
+        exclude_keywords=parsed_exclude,
         source=source,
         category=category,
         ai_min_score=ai_min_score,

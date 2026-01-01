@@ -74,6 +74,8 @@ export interface RSSSource {
 
 export interface NewsFilter {
   keyword?: string;
+  include_keywords?: string[];
+  exclude_keywords?: string[];
   source?: string;
   category?: string;
   ai_min_score?: number;

@@ -48,6 +48,8 @@ class NewsRepository:
     async def get_all(
         self,
         keyword: Optional[str] = None,
+        include_keywords: Optional[List[str]] = None,
+        exclude_keywords: Optional[List[str]] = None,
         source: Optional[str] = None,
         category: Optional[str] = None,
         ai_min_score: Optional[int] = None,
@@ -69,6 +71,28 @@ class NewsRepository:
                     News.summary.ilike(f"%{keyword}%")
                 )
             )
+
+        # Include keywords (OR condition - any keyword matches)
+        if include_keywords:
+            include_conditions = []
+            for kw in include_keywords:
+                include_conditions.append(
+                    or_(
+                        News.title.ilike(f"%{kw}%"),
+                        News.summary.ilike(f"%{kw}%")
+                    )
+                )
+            conditions.append(or_(*include_conditions))
+
+        # Exclude keywords (AND condition - none should match)
+        if exclude_keywords:
+            for kw in exclude_keywords:
+                conditions.append(
+                    and_(
+                        ~News.title.ilike(f"%{kw}%"),
+                        ~News.summary.ilike(f"%{kw}%") | (News.summary.is_(None))
+                    )
+                )
 
         if source:
             conditions.append(News.source == source)

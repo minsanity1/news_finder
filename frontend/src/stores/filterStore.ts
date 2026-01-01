@@ -10,6 +10,8 @@ interface FilterState {
 
 const defaultFilter: NewsFilter = {
   keyword: '',
+  include_keywords: undefined,
+  exclude_keywords: undefined,
   source: '',
   category: '',
   ai_min_score: undefined,

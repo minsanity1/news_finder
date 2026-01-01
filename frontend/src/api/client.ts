@@ -24,6 +24,12 @@ export const newsApi = {
     const params = new URLSearchParams();
 
     if (filter.keyword) params.append('keyword', filter.keyword);
+    if (filter.include_keywords && filter.include_keywords.length > 0) {
+      params.append('include_keywords', filter.include_keywords.join(','));
+    }
+    if (filter.exclude_keywords && filter.exclude_keywords.length > 0) {
+      params.append('exclude_keywords', filter.exclude_keywords.join(','));
+    }
     if (filter.source) params.append('source', filter.source);
     if (filter.category) params.append('category', filter.category);
     if (filter.ai_min_score !== undefined) params.append('ai_min_score', String(filter.ai_min_score));

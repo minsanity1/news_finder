@@ -27,7 +27,9 @@ export default function PresetManager() {
 
   const handleApplyPreset = (preset: FilterPreset) => {
     setFilter({
-      ai_min_score: preset.ai_min_score ?? undefined,
+      include_keywords: preset.include_keywords ?? undefined,
+      exclude_keywords: preset.exclude_keywords ?? undefined,
+      ai_min_score: preset.ai_min_score && preset.ai_min_score > 0 ? preset.ai_min_score : undefined,
     });
   };
 
