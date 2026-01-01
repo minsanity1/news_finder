@@ -1,10 +1,14 @@
 import { useState } from 'react';
-import { RefreshCw, Settings, AlertTriangle, Search } from 'lucide-react';
+import { RefreshCw, Settings, AlertTriangle, Search, HelpCircle } from 'lucide-react';
 import { useCollectorRun, useCollectorStatus, useAIUsage } from '../hooks/useAIAnalysis';
 import SearchModal from './SearchModal';
+import SettingsModal from './SettingsModal';
+import HelpModal from './HelpModal';
 
 export default function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const { mutate: runCollector, isPending } = useCollectorRun();
   const { data: status } = useCollectorStatus();
   const { data: aiUsage } = useAIUsage();
@@ -76,7 +80,19 @@ export default function Header() {
               Search
             </button>
 
-            <button className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
+            <button
+              onClick={() => setIsHelpOpen(true)}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              title="도움말"
+            >
+              <HelpCircle className="w-5 h-5" />
+            </button>
+
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              title="설정"
+            >
               <Settings className="w-5 h-5" />
             </button>
           </div>
@@ -84,6 +100,8 @@ export default function Header() {
       </header>
 
       <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
     </>
   );
 }
