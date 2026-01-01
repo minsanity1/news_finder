@@ -1,9 +1,15 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 import os
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore"
+    )
+
     # Database
     database_url: str = "sqlite+aiosqlite:///./data/news.db"
 
@@ -45,11 +51,7 @@ class Settings(BaseSettings):
     port: int = 8000
     debug: bool = True
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
 
-
-@lru_cache()
 def get_settings() -> Settings:
+    """Get settings (no cache for development)"""
     return Settings()
