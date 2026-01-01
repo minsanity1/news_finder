@@ -1,8 +1,8 @@
-import { useEffect } from 'react';
-import { X, Sparkles, Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { X, Sparkles, Loader2, Play } from 'lucide-react';
 import { useAIFilterModalStore, useFilterStore } from '../stores/filterStore';
 import { useAIPresets, useAIPresetDetail } from '../hooks/useFilters';
-import { useAIUsage } from '../hooks/useAIAnalysis';
+import { useAIUsage, useAnalyzeUnanalyzed } from '../hooks/useAIAnalysis';
 
 export default function AIFilterModal() {
   const {
@@ -19,13 +19,23 @@ export default function AIFilterModal() {
   const { setFilter } = useFilterStore();
   const { data: presets, isLoading: presetsLoading } = useAIPresets();
   const { data: presetDetail } = useAIPresetDetail(selectedPresetKey);
-  const { data: aiUsage } = useAIUsage();
+  const { data: aiUsage, refetch: refetchUsage } = useAIUsage();
+  const { mutate: analyzeUnanalyzed, isPending: isAnalyzing } = useAnalyzeUnanalyzed();
+
+  const [analysisLimit, setAnalysisLimit] = useState(20);
+  const [lastResult, setLastResult] = useState<{ analyzed: number; message: string } | null>(null);
 
   useEffect(() => {
     if (presetDetail?.prompt && selectedPresetKey !== 'custom') {
       setCustomPrompt(presetDetail.prompt);
     }
   }, [presetDetail, selectedPresetKey, setCustomPrompt]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setLastResult(null);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -35,6 +45,28 @@ export default function AIFilterModal() {
       ai_category: selectedPresetKey !== 'custom' ? selectedPresetKey.replace('brand_', '') : undefined,
     });
     closeModal();
+  };
+
+  const handleRunAnalysis = () => {
+    const presetKey = selectedPresetKey === 'custom' ? 'brand_failure' : selectedPresetKey;
+    analyzeUnanalyzed(
+      { presetKey, limit: analysisLimit },
+      {
+        onSuccess: (data) => {
+          setLastResult({
+            analyzed: data.results?.length || 0,
+            message: data.message,
+          });
+          refetchUsage();
+        },
+        onError: (error) => {
+          setLastResult({
+            analyzed: 0,
+            message: '분석 중 오류가 발생했습니다.',
+          });
+        },
+      }
+    );
   };
 
   const presetOptions = [
@@ -134,6 +166,50 @@ export default function AIFilterModal() {
             </div>
           </div>
 
+          {/* Run Analysis Section */}
+          <div className="border rounded-lg p-4 bg-purple-50">
+            <h3 className="font-medium text-purple-900 mb-3">일괄 AI 분석 실행</h3>
+            <div className="flex items-center gap-3 mb-3">
+              <label className="text-sm text-purple-700">분석할 뉴스 수:</label>
+              <select
+                value={analysisLimit}
+                onChange={(e) => setAnalysisLimit(Number(e.target.value))}
+                className="px-3 py-1.5 border rounded-lg text-sm"
+                disabled={isAnalyzing}
+              >
+                <option value={10}>10개</option>
+                <option value={20}>20개</option>
+                <option value={50}>50개</option>
+                <option value={100}>100개</option>
+              </select>
+              <button
+                onClick={handleRunAnalysis}
+                disabled={isAnalyzing || selectedPresetKey === 'custom'}
+                className="flex items-center gap-2 px-4 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isAnalyzing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    분석 중...
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4" />
+                    분석 실행
+                  </>
+                )}
+              </button>
+            </div>
+            {lastResult && (
+              <div className={`text-sm p-2 rounded ${lastResult.analyzed > 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                {lastResult.message}
+              </div>
+            )}
+            {selectedPresetKey === 'custom' && (
+              <p className="text-xs text-purple-600">* Custom Prompt는 개별 분석만 지원합니다.</p>
+            )}
+          </div>
+
           {/* API Usage Info */}
           {aiUsage && (
             <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-600">
@@ -154,19 +230,24 @@ export default function AIFilterModal() {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-4 border-t">
-          <button
-            onClick={closeModal}
-            className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleApply}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-          >
-            Apply
-          </button>
+        <div className="flex items-center justify-between p-4 border-t">
+          <p className="text-xs text-gray-500">
+            * Apply: 분석된 뉴스 필터링 | 분석 실행: 미분석 뉴스 AI 분석
+          </p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={closeModal}
+              className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleApply}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              Apply Filter
+            </button>
+          </div>
         </div>
       </div>
     </div>
