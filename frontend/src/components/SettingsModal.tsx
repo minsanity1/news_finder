@@ -1,18 +1,17 @@
 import { useState } from 'react';
-import { X, Key, Rss, Brain, Database, ChevronRight, ExternalLink, Check, AlertCircle } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { searchApi, aiApi, collectorApi } from '../api/client';
+import { X, Key, Brain, Database, ExternalLink, Check, AlertCircle } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { searchApi, aiApi } from '../api/client';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-type TabType = 'api' | 'rss' | 'ai' | 'data';
+type TabType = 'api' | 'ai' | 'data';
 
 export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>('api');
-  const queryClient = useQueryClient();
 
   const { data: aiUsage } = useQuery({
     queryKey: ['ai-usage'],
@@ -26,17 +25,10 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     enabled: isOpen,
   });
 
-  const { data: rssSources } = useQuery({
-    queryKey: ['rss-sources'],
-    queryFn: collectorApi.getSources,
-    enabled: isOpen,
-  });
-
   if (!isOpen) return null;
 
   const tabs = [
     { id: 'api' as TabType, label: 'API 설정', icon: Key },
-    { id: 'rss' as TabType, label: 'RSS 소스', icon: Rss },
     { id: 'ai' as TabType, label: 'AI 설정', icon: Brain },
     { id: 'data' as TabType, label: '데이터 관리', icon: Database },
   ];
@@ -81,9 +73,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           <div className="flex-1 overflow-y-auto p-6">
             {activeTab === 'api' && (
               <APISettings aiUsage={aiUsage} searchStatus={searchStatus} />
-            )}
-            {activeTab === 'rss' && (
-              <RSSSettings sources={rssSources} />
             )}
             {activeTab === 'ai' && (
               <AISettings aiUsage={aiUsage} />
@@ -195,37 +184,6 @@ function APISettings({ aiUsage, searchStatus }: { aiUsage: any; searchStatus: an
           backend/.env 파일을 직접 편집한 후 서버를 재시작하세요.
           보안을 위해 웹에서 직접 API 키를 입력하는 기능은 제공하지 않습니다.
         </p>
-      </div>
-    </div>
-  );
-}
-
-// RSS Settings Tab
-function RSSSettings({ sources }: { sources: any[] | undefined }) {
-  return (
-    <div className="space-y-4">
-      <p className="text-sm text-gray-600">
-        현재 등록된 RSS 소스 목록입니다. 소스 관리는 backend/app/collector/sources.py에서 수정할 수 있습니다.
-      </p>
-
-      <div className="border rounded-lg divide-y">
-        {sources?.map((source, index) => (
-          <div key={index} className="flex items-center justify-between p-3">
-            <div>
-              <p className="font-medium text-sm">{source.name}</p>
-              <p className="text-xs text-gray-500">{source.category}</p>
-            </div>
-            <span className={`px-2 py-0.5 rounded text-xs ${
-              source.enabled
-                ? 'bg-green-100 text-green-700'
-                : 'bg-gray-100 text-gray-500'
-            }`}>
-              {source.enabled ? '활성' : '비활성'}
-            </span>
-          </div>
-        )) || (
-          <p className="p-4 text-sm text-gray-500">소스 정보를 불러오는 중...</p>
-        )}
       </div>
     </div>
   );

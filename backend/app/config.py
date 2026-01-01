@@ -42,10 +42,6 @@ class Settings(BaseSettings):
         """Check if Naver API is configured"""
         return bool(self.naver_client_id and self.naver_client_secret)
 
-    # 수집 설정
-    collect_interval_minutes: int = 60
-    max_news_per_source: int = 50
-
     # 서버 설정
     host: str = "0.0.0.0"
     port: int = 8000

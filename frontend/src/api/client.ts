@@ -5,8 +5,6 @@ import type {
   FilterPreset,
   AIPreset,
   AIAnalysisResult,
-  CollectorStatus,
-  RSSSource,
   NewsFilter,
   AIUsage,
 } from '../types';
@@ -67,24 +65,6 @@ export const newsApi = {
   getCategories: async (): Promise<string[]> => {
     const response = await api.get('/news/categories');
     return response.data.categories;
-  },
-};
-
-// Collector API
-export const collectorApi = {
-  run: async (): Promise<{ message: string; collected_count: number; saved_count: number }> => {
-    const response = await api.post('/collector/run');
-    return response.data;
-  },
-
-  getStatus: async (): Promise<CollectorStatus> => {
-    const response = await api.get('/collector/status');
-    return response.data;
-  },
-
-  getSources: async (): Promise<RSSSource[]> => {
-    const response = await api.get('/collector/sources');
-    return response.data.sources;
   },
 };
 

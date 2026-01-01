@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { RefreshCw, Settings, AlertTriangle, Search, HelpCircle } from 'lucide-react';
-import { useCollectorRun, useCollectorStatus, useAIUsage } from '../hooks/useAIAnalysis';
+import { Settings, AlertTriangle, Search, HelpCircle } from 'lucide-react';
+import { useAIUsage } from '../hooks/useAIAnalysis';
 import SearchModal from './SearchModal';
 import SettingsModal from './SettingsModal';
 import HelpModal from './HelpModal';
@@ -9,8 +9,6 @@ export default function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
-  const { mutate: runCollector, isPending } = useCollectorRun();
-  const { data: status } = useCollectorStatus();
   const { data: aiUsage } = useAIUsage();
 
   return (
@@ -42,12 +40,6 @@ export default function Header() {
             <h1 className="text-xl font-bold text-gray-900">
               Korean News Filter
             </h1>
-            {status?.last_run && (
-              <span className="text-sm text-gray-500">
-                Last: {new Date(status.last_run).toLocaleString('ko-KR')}
-                {status.last_collected_count > 0 && ` (${status.last_collected_count})`}
-              </span>
-            )}
           </div>
 
           <div className="flex items-center gap-4">
@@ -62,15 +54,6 @@ export default function Header() {
                   : 'Not configured'}
               </div>
             )}
-
-            <button
-              onClick={() => runCollector()}
-              disabled={isPending}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <RefreshCw className={`w-4 h-4 ${isPending ? 'animate-spin' : ''}`} />
-              {isPending ? 'Collecting...' : 'Collect'}
-            </button>
 
             <button
               onClick={() => setIsSearchOpen(true)}

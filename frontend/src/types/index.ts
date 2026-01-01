@@ -59,19 +59,6 @@ export interface AIAnalysisResult {
   key_points: string[];
 }
 
-export interface CollectorStatus {
-  is_running: boolean;
-  last_run: string | null;
-  last_collected_count: number;
-}
-
-export interface RSSSource {
-  name: string;
-  url: string;
-  category: string;
-  enabled: boolean;
-}
-
 export interface NewsFilter {
   keyword?: string;
   include_keywords?: string[];

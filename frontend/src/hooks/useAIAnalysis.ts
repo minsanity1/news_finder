@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { aiApi, collectorApi } from '../api/client';
+import { aiApi } from '../api/client';
 
 export function useAIAnalyze() {
   const queryClient = useQueryClient();
@@ -46,30 +46,3 @@ export function useAnalyzeUnanalyzed() {
   });
 }
 
-export function useCollectorRun() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: () => collectorApi.run(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['news'] });
-      queryClient.invalidateQueries({ queryKey: ['collectorStatus'] });
-    },
-  });
-}
-
-export function useCollectorStatus() {
-  return useQuery({
-    queryKey: ['collectorStatus'],
-    queryFn: () => collectorApi.getStatus(),
-    refetchInterval: 1000 * 30, // 30초마다 갱신
-  });
-}
-
-export function useCollectorSources() {
-  return useQuery({
-    queryKey: ['collectorSources'],
-    queryFn: () => collectorApi.getSources(),
-    staleTime: Infinity,
-  });
-}

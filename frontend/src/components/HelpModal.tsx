@@ -92,12 +92,8 @@ function GuideSection() {
         <h4 className="text-lg font-semibold mb-3">주요 기능</h4>
         <div className="space-y-3">
           <FeatureItem
-            title="🔄 뉴스 수집 (Collect)"
-            description="10개 주요 언론사의 RSS 피드에서 최신 뉴스를 자동으로 수집합니다."
-          />
-          <FeatureItem
             title="🔍 네이버 검색 (Search)"
-            description="네이버 뉴스 검색 API로 과거 뉴스까지 검색하여 수집합니다."
+            description="네이버 뉴스 검색 API로 키워드 기반 뉴스를 검색하여 수집합니다."
           />
           <FeatureItem
             title="✨ AI 분석 (AI Filter)"
@@ -119,7 +115,7 @@ function GuideSection() {
         <ol className="space-y-2 text-gray-600">
           <li className="flex gap-2">
             <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-sm font-medium">1</span>
-            <span><strong>Collect</strong> 버튼을 눌러 최신 뉴스를 수집하세요.</span>
+            <span><strong>Search</strong> 버튼을 눌러 키워드로 뉴스를 검색하세요.</span>
           </li>
           <li className="flex gap-2">
             <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-sm font-medium">2</span>
@@ -325,26 +321,16 @@ function SearchGuideSection() {
   return (
     <div className="space-y-6">
       <div>
-        <h4 className="text-lg font-semibold mb-3">RSS vs 네이버 검색</h4>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="border rounded-lg p-4">
-            <h5 className="font-medium mb-2">🔄 RSS 수집 (Collect)</h5>
-            <ul className="text-sm text-gray-600 space-y-1">
-              <li>• 최신 뉴스 자동 수집</li>
-              <li>• 10개 주요 언론사</li>
-              <li>• API 키 불필요</li>
-              <li>• 최근 1일 분량</li>
-            </ul>
-          </div>
-          <div className="border rounded-lg p-4">
-            <h5 className="font-medium mb-2">🔍 네이버 검색 (Search)</h5>
-            <ul className="text-sm text-gray-600 space-y-1">
-              <li>• 키워드로 검색</li>
-              <li>• 과거 뉴스 검색 가능</li>
-              <li>• Naver API 키 필요</li>
-              <li>• 최대 1,000개 결과</li>
-            </ul>
-          </div>
+        <h4 className="text-lg font-semibold mb-3">네이버 뉴스 검색</h4>
+        <div className="border rounded-lg p-4">
+          <h5 className="font-medium mb-2">🔍 네이버 검색 (Search)</h5>
+          <ul className="text-sm text-gray-600 space-y-1">
+            <li>• 키워드로 뉴스 검색</li>
+            <li>• 과거 뉴스까지 검색 가능</li>
+            <li>• 언론사별 필터링 지원</li>
+            <li>• 최대 1,000개 결과</li>
+            <li>• Naver API 키 필요</li>
+          </ul>
         </div>
       </div>
 

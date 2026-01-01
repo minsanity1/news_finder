@@ -17,7 +17,7 @@ export default function AIFilterModal() {
   } = useAIFilterModalStore();
 
   const { setFilter } = useFilterStore();
-  const { data: presets, isLoading: presetsLoading } = useAIPresets();
+  const { isLoading: presetsLoading } = useAIPresets();
   const { data: presetDetail } = useAIPresetDetail(selectedPresetKey);
   const { data: aiUsage, refetch: refetchUsage } = useAIUsage();
   const { mutate: analyzeUnanalyzed, isPending: isAnalyzing } = useAnalyzeUnanalyzed();
@@ -59,7 +59,7 @@ export default function AIFilterModal() {
           });
           refetchUsage();
         },
-        onError: (error) => {
+        onError: () => {
           setLastResult({
             analyzed: 0,
             message: '분석 중 오류가 발생했습니다.',
