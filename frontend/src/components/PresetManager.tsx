@@ -167,21 +167,48 @@ export default function PresetManager() {
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Preset name"
                     className="w-full px-2 py-1 border rounded"
                   />
+                  <input
+                    type="text"
+                    value={formData.include_keywords}
+                    onChange={(e) => setFormData({ ...formData, include_keywords: e.target.value })}
+                    placeholder="Include keywords (comma separated)"
+                    className="w-full px-2 py-1 border rounded text-sm"
+                  />
+                  <input
+                    type="text"
+                    value={formData.exclude_keywords}
+                    onChange={(e) => setFormData({ ...formData, exclude_keywords: e.target.value })}
+                    placeholder="Exclude keywords (comma separated)"
+                    className="w-full px-2 py-1 border rounded text-sm"
+                  />
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-600">Min AI Score:</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={formData.ai_min_score}
+                      onChange={(e) => setFormData({ ...formData, ai_min_score: parseInt(e.target.value) || 0 })}
+                      className="w-20 px-2 py-1 border rounded text-sm"
+                    />
+                  </div>
                   <div className="flex justify-end gap-2">
                     <button
                       onClick={() => setEditingId(null)}
-                      className="p-1 text-gray-600 hover:bg-gray-100 rounded"
+                      className="px-3 py-1.5 text-gray-600 hover:bg-gray-100 rounded-lg"
                     >
                       <X className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleUpdate(preset.id)}
                       disabled={isUpdating}
-                      className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                      className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg disabled:opacity-50"
                     >
                       {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                      Save
                     </button>
                   </div>
                 </div>
