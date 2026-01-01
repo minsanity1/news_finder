@@ -18,6 +18,7 @@ class SearchRequest(BaseModel):
     max_results: int = 100
     sort: str = "date"  # date or sim
     save_to_db: bool = True
+    filter_sources: Optional[List[str]] = None  # 언론사 필터 (빈 리스트면 전체)
 
 
 class SearchResult(BaseModel):
@@ -32,8 +33,43 @@ class SearchResult(BaseModel):
 class SearchResponse(BaseModel):
     query: str
     total_found: int
+    filtered_count: int
     saved_count: int
     items: List[SearchResult]
+
+
+def extract_source_name(url: str, title: str) -> str:
+    """URL이나 제목에서 언론사명 추출"""
+    source_patterns = {
+        'yna.co.kr': '연합뉴스',
+        'yonhapnews': '연합뉴스',
+        'hankyung.com': '한국경제',
+        'mk.co.kr': '매일경제',
+        'etnews.com': '전자신문',
+        'chosun.com': '조선일보',
+        'joongang.co.kr': '중앙일보',
+        'donga.com': '동아일보',
+        'hani.co.kr': '한겨레',
+        'khan.co.kr': '경향신문',
+        'sbs.co.kr': 'SBS',
+        'kbs.co.kr': 'KBS',
+        'mbc.co.kr': 'MBC',
+        'ytn.co.kr': 'YTN',
+        'newsis.com': '뉴시스',
+        'news1.kr': '뉴스1',
+        'edaily.co.kr': '이데일리',
+        'mt.co.kr': '머니투데이',
+        'sedaily.com': '서울경제',
+        'fnnews.com': '파이낸셜뉴스',
+        'asiae.co.kr': '아시아경제',
+        'heraldcorp.com': '헤럴드경제',
+    }
+
+    url_lower = url.lower()
+    for pattern, name in source_patterns.items():
+        if pattern in url_lower:
+            return name
+    return "기타"
 
 
 @router.get("/status")
@@ -67,12 +103,27 @@ async def search_naver(
         sort=request.sort
     )
 
+    total_found = len(items)
+
+    # 언론사명 추출 및 source 업데이트
+    for item in items:
+        detected_source = extract_source_name(item["url"], item["title"])
+        item["source"] = detected_source
+
+    # 언론사 필터링
+    filtered_items = items
+    if request.filter_sources and len(request.filter_sources) > 0:
+        filtered_items = [
+            item for item in items
+            if item["source"] in request.filter_sources
+        ]
+
     saved_count = 0
 
     # DB에 저장
-    if request.save_to_db and items:
+    if request.save_to_db and filtered_items:
         news_repo = NewsRepository(db)
-        for item in items:
+        for item in filtered_items:
             try:
                 # URL 중복 체크
                 existing = await news_repo.get_by_url(item["url"])
@@ -92,7 +143,8 @@ async def search_naver(
 
     return SearchResponse(
         query=request.query,
-        total_found=len(items),
+        total_found=total_found,
+        filtered_count=len(filtered_items),
         saved_count=saved_count,
         items=[
             SearchResult(
@@ -103,7 +155,7 @@ async def search_naver(
                 category=item["category"],
                 published_at=item["published_at"].isoformat() if item["published_at"] else None
             )
-            for item in items
+            for item in filtered_items
         ]
     )
 

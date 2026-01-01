@@ -135,10 +135,11 @@ export const searchApi = {
     return response.data;
   },
 
-  searchNaver: async (query: string, maxResults: number = 100, saveToDb: boolean = true): Promise<{
+  searchNaver: async (query: string, maxResults: number = 100, saveToDb: boolean = true, filterSources: string[] = []): Promise<{
     query: string;
     total_found: number;
     saved_count: number;
+    filtered_count: number;
     items: Array<{
       title: string;
       summary: string;
@@ -152,6 +153,7 @@ export const searchApi = {
       query,
       max_results: maxResults,
       save_to_db: saveToDb,
+      filter_sources: filterSources.length > 0 ? filterSources : undefined,
     });
     return response.data;
   },

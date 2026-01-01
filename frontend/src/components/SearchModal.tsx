@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Search, Loader2, ExternalLink } from 'lucide-react';
+import { X, Search, Loader2, ExternalLink, Filter } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { searchApi } from '../api/client';
 
@@ -8,9 +8,27 @@ interface SearchModalProps {
   onClose: () => void;
 }
 
+const AVAILABLE_SOURCES = [
+  { id: '연합뉴스', name: '연합뉴스' },
+  { id: '한국경제', name: '한국경제' },
+  { id: '매일경제', name: '매일경제' },
+  { id: '전자신문', name: '전자신문' },
+  { id: '조선일보', name: '조선일보' },
+  { id: '중앙일보', name: '중앙일보' },
+  { id: '동아일보', name: '동아일보' },
+  { id: '한겨레', name: '한겨레' },
+  { id: '경향신문', name: '경향신문' },
+  { id: 'SBS', name: 'SBS' },
+  { id: 'KBS', name: 'KBS' },
+  { id: 'MBC', name: 'MBC' },
+  { id: 'YTN', name: 'YTN' },
+];
+
 export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const [query, setQuery] = useState('');
   const [maxResults, setMaxResults] = useState(100);
+  const [selectedSources, setSelectedSources] = useState<string[]>([]);
+  const [showSourceFilter, setShowSourceFilter] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: status } = useQuery({
@@ -20,7 +38,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
   });
 
   const searchMutation = useMutation({
-    mutationFn: () => searchApi.searchNaver(query, maxResults, true),
+    mutationFn: () => searchApi.searchNaver(query, maxResults, true, selectedSources),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['news'] });
     },
@@ -33,6 +51,22 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
     if (query.trim()) {
       searchMutation.mutate();
     }
+  };
+
+  const toggleSource = (sourceId: string) => {
+    setSelectedSources(prev =>
+      prev.includes(sourceId)
+        ? prev.filter(s => s !== sourceId)
+        : [...prev, sourceId]
+    );
+  };
+
+  const selectAllSources = () => {
+    setSelectedSources(AVAILABLE_SOURCES.map(s => s.id));
+  };
+
+  const clearAllSources = () => {
+    setSelectedSources([]);
   };
 
   return (
@@ -103,6 +137,64 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
                   </select>
                 </div>
 
+                {/* Source Filter */}
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setShowSourceFilter(!showSourceFilter)}
+                    className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+                  >
+                    <Filter className="w-4 h-4" />
+                    언론사 필터 {selectedSources.length > 0 && `(${selectedSources.length}개 선택)`}
+                  </button>
+
+                  {showSourceFilter && (
+                    <div className="mt-2 p-3 border rounded-lg bg-gray-50">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs text-gray-500">
+                          선택한 언론사 기사만 저장됩니다. 미선택시 전체 저장.
+                        </span>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={selectAllSources}
+                            className="text-xs text-blue-600 hover:underline"
+                          >
+                            전체선택
+                          </button>
+                          <button
+                            type="button"
+                            onClick={clearAllSources}
+                            className="text-xs text-gray-500 hover:underline"
+                          >
+                            초기화
+                          </button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {AVAILABLE_SOURCES.map((source) => (
+                          <label
+                            key={source.id}
+                            className={`flex items-center gap-2 p-2 rounded cursor-pointer text-sm ${
+                              selectedSources.includes(source.id)
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-white hover:bg-gray-100'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedSources.includes(source.id)}
+                              onChange={() => toggleSource(source.id)}
+                              className="rounded"
+                            />
+                            {source.name}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <button
                   type="submit"
                   disabled={!query.trim() || searchMutation.isPending}
@@ -129,6 +221,9 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
                     <strong>검색 완료!</strong>
                     <br />
                     검색 결과: {searchMutation.data.total_found}개
+                    {searchMutation.data.filtered_count !== searchMutation.data.total_found && (
+                      <> → 필터 적용: {searchMutation.data.filtered_count}개</>
+                    )}
                     <br />
                     새로 저장: {searchMutation.data.saved_count}개
                   </p>
