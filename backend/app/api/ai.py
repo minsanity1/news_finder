@@ -6,9 +6,11 @@ from pydantic import BaseModel
 from app.database import get_db
 from app.database.repository import NewsRepository, AIAnalysisLogRepository
 from app.filter.ai_filter import AIFilter, AI_PRESETS
+from app.config import get_settings
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
+settings = get_settings()
 
 
 class AnalyzeRequest(BaseModel):
@@ -181,11 +183,15 @@ async def get_usage(db: AsyncSession = Depends(get_db)):
     log_repo = AIAnalysisLogRepository(db)
     stats = await log_repo.get_usage_stats()
 
+    # API 키 설정 여부 확인
+    api_key_configured = bool(settings.google_api_key and len(settings.google_api_key) > 10)
+
     return {
         "today": stats["today"],
         "total": stats["total"],
         "daily_limit": 1500,  # Gemini Flash 무료 티어
-        "remaining": max(0, 1500 - stats["today"])
+        "remaining": max(0, 1500 - stats["today"]),
+        "api_key_configured": api_key_configured
     }
 
 

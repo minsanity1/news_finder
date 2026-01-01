@@ -93,4 +93,5 @@ export interface AIUsage {
   total: number;
   daily_limit: number;
   remaining: number;
+  api_key_configured: boolean;
 }
