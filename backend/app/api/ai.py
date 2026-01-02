@@ -29,12 +29,18 @@ class BatchAnalyzeRequest(BaseModel):
 
 class AnalysisResult(BaseModel):
     news_id: int
-    is_relevant: bool
     score: int
-    category: str
+    grade: str
+    breakdown: Optional[dict] = None
     reason: str
-    youtube_potential: str
+    male_2040_check: str
+    male_2040_reason: Optional[str] = None
     key_points: List[str]
+    suggested_title: Optional[str] = None
+    # 하위 호환성
+    is_relevant: Optional[bool] = None
+    category: Optional[str] = None
+    youtube_potential: Optional[str] = None
 
 
 @router.post("/analyze", response_model=AnalysisResult)
@@ -76,10 +82,15 @@ async def analyze_single(
     await news_repo.update(request.news_id, {
         "ai_analyzed": True,
         "ai_score": result.get("score", 0),
+        "ai_grade": result.get("grade", "C"),
         "ai_category": result.get("category", "other"),
         "ai_reason": result.get("reason", ""),
         "ai_key_points": result.get("key_points", []),
+        "ai_breakdown": result.get("breakdown", {}),
         "ai_youtube_potential": result.get("youtube_potential", "낮음"),
+        "ai_male_2040_check": result.get("male_2040_check", "❌"),
+        "ai_male_2040_reason": result.get("male_2040_reason", ""),
+        "ai_suggested_title": result.get("suggested_title", ""),
         "ai_analyzed_at": datetime.utcnow()
     })
 
@@ -95,12 +106,17 @@ async def analyze_single(
 
     return AnalysisResult(
         news_id=request.news_id,
-        is_relevant=result.get("is_relevant", False),
         score=result.get("score", 0),
-        category=result.get("category", "other"),
+        grade=result.get("grade", "C"),
+        breakdown=result.get("breakdown", {}),
         reason=result.get("reason", ""),
-        youtube_potential=result.get("youtube_potential", "낮음"),
-        key_points=result.get("key_points", [])
+        male_2040_check=result.get("male_2040_check", "❌"),
+        male_2040_reason=result.get("male_2040_reason", ""),
+        key_points=result.get("key_points", []),
+        suggested_title=result.get("suggested_title", ""),
+        is_relevant=result.get("is_relevant", False),
+        category=result.get("category", "other"),
+        youtube_potential=result.get("youtube_potential", "낮음")
     )
 
 
@@ -151,10 +167,15 @@ async def analyze_batch(
             await news_repo.update(news_id, {
                 "ai_analyzed": True,
                 "ai_score": result.get("score", 0),
+                "ai_grade": result.get("grade", "C"),
                 "ai_category": result.get("category", "other"),
                 "ai_reason": result.get("reason", ""),
                 "ai_key_points": result.get("key_points", []),
+                "ai_breakdown": result.get("breakdown", {}),
                 "ai_youtube_potential": result.get("youtube_potential", "낮음"),
+                "ai_male_2040_check": result.get("male_2040_check", "❌"),
+                "ai_male_2040_reason": result.get("male_2040_reason", ""),
+                "ai_suggested_title": result.get("suggested_title", ""),
                 "ai_analyzed_at": datetime.utcnow()
             })
 
@@ -175,12 +196,17 @@ async def analyze_batch(
         "results": [
             AnalysisResult(
                 news_id=r.get("news_id", 0),
-                is_relevant=r.get("is_relevant", False),
                 score=r.get("score", 0),
-                category=r.get("category", "other"),
+                grade=r.get("grade", "C"),
+                breakdown=r.get("breakdown", {}),
                 reason=r.get("reason", ""),
-                youtube_potential=r.get("youtube_potential", "낮음"),
-                key_points=r.get("key_points", [])
+                male_2040_check=r.get("male_2040_check", "❌"),
+                male_2040_reason=r.get("male_2040_reason", ""),
+                key_points=r.get("key_points", []),
+                suggested_title=r.get("suggested_title", ""),
+                is_relevant=r.get("is_relevant", False),
+                category=r.get("category", "other"),
+                youtube_potential=r.get("youtube_potential", "낮음")
             )
             for r in results
         ]

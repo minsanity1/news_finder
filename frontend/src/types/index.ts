@@ -1,3 +1,18 @@
+export interface AIBreakdown {
+  brand_recognition?: number;
+  narrative_gap?: number;
+  emotional_conflict?: number;
+  national_pride?: number;
+  practicality?: number;
+  villain_bonus?: number;
+  irony_bonus?: number;
+  trend_bonus?: number;
+  wallet_impact?: number;
+  penalty_trivia?: number;
+  penalty_timing?: number;
+  penalty_b2b?: number;
+}
+
 export interface News {
   id: number;
   title: string;
@@ -13,10 +28,15 @@ export interface News {
   is_used: boolean;
   ai_analyzed: boolean;
   ai_score: number | null;
+  ai_grade: string | null;  // S, A, B, C
   ai_category: string | null;
   ai_reason: string | null;
   ai_key_points: string[] | null;
+  ai_breakdown: AIBreakdown | null;
   ai_youtube_potential: string | null;
+  ai_male_2040_check: string | null;  // ⭕, 🔺, ❌
+  ai_male_2040_reason: string | null;
+  ai_suggested_title: string | null;
   ai_analyzed_at: string | null;
 }
 
@@ -51,12 +71,18 @@ export interface AIPreset {
 
 export interface AIAnalysisResult {
   news_id: number;
-  is_relevant: boolean;
   score: number;
-  category: string;
+  grade: string;
+  breakdown: AIBreakdown | null;
   reason: string;
-  youtube_potential: string;
+  male_2040_check: string;
+  male_2040_reason: string | null;
   key_points: string[];
+  suggested_title: string | null;
+  // 하위 호환성
+  is_relevant?: boolean;
+  category?: string;
+  youtube_potential?: string;
 }
 
 export interface NewsFilter {

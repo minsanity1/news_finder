@@ -25,10 +25,15 @@ class News(Base):
     # AI 분석 결과
     ai_analyzed = Column(Boolean, default=False)
     ai_score = Column(Integer)
+    ai_grade = Column(String(5))  # S, A, B, C
     ai_category = Column(String(50))
     ai_reason = Column(Text)
     ai_key_points = Column(JSON)
+    ai_breakdown = Column(JSON)  # 상세 점수 breakdown
     ai_youtube_potential = Column(String(20))
+    ai_male_2040_check = Column(String(5))  # ⭕, 🔺, ❌
+    ai_male_2040_reason = Column(Text)
+    ai_suggested_title = Column(Text)
     ai_analyzed_at = Column(DateTime)
 
     def to_dict(self):
@@ -47,10 +52,15 @@ class News(Base):
             "is_used": self.is_used,
             "ai_analyzed": self.ai_analyzed,
             "ai_score": self.ai_score,
+            "ai_grade": self.ai_grade,
             "ai_category": self.ai_category,
             "ai_reason": self.ai_reason,
             "ai_key_points": self.ai_key_points,
+            "ai_breakdown": self.ai_breakdown,
             "ai_youtube_potential": self.ai_youtube_potential,
+            "ai_male_2040_check": self.ai_male_2040_check,
+            "ai_male_2040_reason": self.ai_male_2040_reason,
+            "ai_suggested_title": self.ai_suggested_title,
             "ai_analyzed_at": self.ai_analyzed_at.isoformat() if self.ai_analyzed_at else None,
         }
 
