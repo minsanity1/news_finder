@@ -3,6 +3,7 @@ from .fmkorea import FMKoreaCollector
 from .ppomppu import PpomppuCollector
 from .clien import ClienCollector
 from .theqoo import TheqooCollector
+from .dcinside import DCInsideCollector
 from .config import COMMUNITY_BOARDS, EXCLUDE_TITLE_PATTERNS, PRIORITY_KEYWORDS
 
 __all__ = [
@@ -12,6 +13,7 @@ __all__ = [
     "PpomppuCollector",
     "ClienCollector",
     "TheqooCollector",
+    "DCInsideCollector",
     "COMMUNITY_BOARDS",
     "EXCLUDE_TITLE_PATTERNS",
     "PRIORITY_KEYWORDS",

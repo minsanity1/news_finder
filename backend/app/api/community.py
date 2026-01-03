@@ -14,6 +14,7 @@ from app.collector.community import (
     PpomppuCollector,
     ClienCollector,
     TheqooCollector,
+    DCInsideCollector,
     COMMUNITY_BOARDS,
 )
 from app.collector.community.config import get_enabled_boards, get_board_config
@@ -27,6 +28,7 @@ COLLECTORS = {
     "ppomppu": PpomppuCollector,
     "clien": ClienCollector,
     "theqoo": TheqooCollector,
+    "dcinside": DCInsideCollector,
 }
 
 

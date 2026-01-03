@@ -27,7 +27,6 @@ COMMUNITY_BOARDS = {
         "enabled": True,
         "boards": [
             {"id": "추천글", "path": "service/recommend", "priority": 1, "collect_limit": 30},
-            {"id": "모두의공원", "path": "service/board/park", "priority": 2, "collect_limit": 20},
         ],
         "collect_interval_minutes": 30,
     },
@@ -41,7 +40,7 @@ COMMUNITY_BOARDS = {
     },
     "dcinside": {
         "name": "디시인사이드",
-        "enabled": False,  # Phase 2-C
+        "enabled": True,
         "boards": [
             {"id": "실시간베스트", "path": "board/lists?id=dcbest", "priority": 1, "collect_limit": 50},
         ],
