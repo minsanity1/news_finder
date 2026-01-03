@@ -13,6 +13,8 @@ export interface AIBreakdown {
   penalty_b2b?: number;
 }
 
+export type SourceType = 'news' | 'community';
+
 export interface News {
   id: number;
   title: string;
@@ -23,6 +25,14 @@ export interface News {
   category: string | null;
   published_at: string | null;
   collected_at: string | null;
+  // 소스 타입
+  source_type: SourceType | null;
+  // 커뮤니티 전용 메타
+  view_count: number | null;
+  comment_count: number | null;
+  like_count: number | null;
+  author: string | null;
+  // 상태
   is_read: boolean;
   is_bookmarked: boolean;
   is_used: boolean;
@@ -118,4 +128,25 @@ export interface AIUsage {
   keys?: APIKeyUsage[];
   total_keys?: number;
   current_key_index?: number;
+}
+
+// 커뮤니티 관련 타입
+export interface CommunityBoard {
+  id: string;
+  priority: number;
+  collect_limit: number;
+}
+
+export interface CommunitySource {
+  name: string;
+  enabled: boolean;
+  boards: CommunityBoard[];
+}
+
+export interface CommunityCollectResponse {
+  source: string;
+  board: string;
+  collected: number;
+  saved: number;
+  duplicates: number;
 }

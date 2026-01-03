@@ -7,6 +7,8 @@ import type {
   AIAnalysisResult,
   NewsFilter,
   AIUsage,
+  CommunitySource,
+  CommunityCollectResponse,
 } from '../types';
 
 const api = axios.create({
@@ -192,6 +194,50 @@ export const aiApi = {
     results?: AIAnalysisResult[];
   }> => {
     const response = await api.post(`/ai/analyze-unanalyzed?preset_key=${presetKey}&limit=${limit}`);
+    return response.data;
+  },
+};
+
+// Community API
+export const communityApi = {
+  getSources: async (): Promise<Record<string, CommunitySource>> => {
+    const response = await api.get('/community/sources');
+    return response.data.sources;
+  },
+
+  getStatus: async (): Promise<{
+    enabled_sources: string[];
+    available_collectors: string[];
+    total_boards: number;
+  }> => {
+    const response = await api.get('/community/status');
+    return response.data;
+  },
+
+  collect: async (
+    source: string,
+    board: string,
+    limit: number = 20
+  ): Promise<CommunityCollectResponse> => {
+    const response = await api.post('/community/collect', {
+      source,
+      board,
+      limit,
+      save_to_db: true,
+      fetch_detail: true,
+    });
+    return response.data;
+  },
+
+  collectAll: async (): Promise<{
+    results: Record<string, {
+      name: string;
+      boards: Record<string, CommunityCollectResponse | { error: string }>;
+    }>;
+    total_collected: number;
+    total_saved: number;
+  }> => {
+    const response = await api.post('/community/collect/all');
     return response.data;
   },
 };

@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { Settings, AlertTriangle, Search, HelpCircle } from 'lucide-react';
+import { Settings, AlertTriangle, Search, HelpCircle, Users } from 'lucide-react';
 import { useAIUsage } from '../hooks/useAIAnalysis';
 import SearchModal from './SearchModal';
 import SettingsModal from './SettingsModal';
 import HelpModal from './HelpModal';
+import CommunityModal from './CommunityModal';
 
 export default function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isCommunityOpen, setIsCommunityOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const { data: aiUsage } = useAIUsage();
@@ -64,6 +66,14 @@ export default function Header() {
             </button>
 
             <button
+              onClick={() => setIsCommunityOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              <Users className="w-4 h-4" />
+              Community
+            </button>
+
+            <button
               onClick={() => setIsHelpOpen(true)}
               className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
               title="도움말"
@@ -83,6 +93,7 @@ export default function Header() {
       </header>
 
       <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+      <CommunityModal isOpen={isCommunityOpen} onClose={() => setIsCommunityOpen(false)} />
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
     </>

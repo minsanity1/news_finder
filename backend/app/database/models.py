@@ -17,6 +17,15 @@ class News(Base):
     published_at = Column(DateTime)
     collected_at = Column(DateTime, default=datetime.utcnow)
 
+    # 소스 타입 (news / community)
+    source_type = Column(String(20), default="news")
+
+    # 커뮤니티 전용 메타
+    view_count = Column(Integer)
+    comment_count = Column(Integer)
+    like_count = Column(Integer)
+    author = Column(String(100))
+
     # 상태
     is_read = Column(Boolean, default=False)
     is_bookmarked = Column(Boolean, default=False)
@@ -47,6 +56,11 @@ class News(Base):
             "category": self.category,
             "published_at": self.published_at.isoformat() if self.published_at else None,
             "collected_at": self.collected_at.isoformat() if self.collected_at else None,
+            "source_type": self.source_type,
+            "view_count": self.view_count,
+            "comment_count": self.comment_count,
+            "like_count": self.like_count,
+            "author": self.author,
             "is_read": self.is_read,
             "is_bookmarked": self.is_bookmarked,
             "is_used": self.is_used,
