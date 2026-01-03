@@ -1,5 +1,5 @@
 """
-에펨코리아 수집기
+클리앙 수집기
 """
 from datetime import datetime, timedelta
 from typing import List, Optional
@@ -11,28 +11,28 @@ from .base import BaseCommunityCollector, CommunityPost
 from .config import COMMUNITY_BOARDS
 
 
-class FMKoreaCollector(BaseCommunityCollector):
-    """에펨코리아 커뮤니티 수집기"""
+class ClienCollector(BaseCommunityCollector):
+    """클리앙 커뮤니티 수집기"""
 
-    SOURCE_NAME = "에펨코리아"
-    BASE_URL = "https://www.fmkorea.com"
-    REQUEST_DELAY = (1.5, 3.0)  # 에펨코리아는 좀 더 조심
+    SOURCE_NAME = "클리앙"
+    BASE_URL = "https://www.clien.net"
+    REQUEST_DELAY = (1.0, 2.0)
 
     def _get_board_url(self, board_id: str, page: int = 1) -> str:
         """게시판 URL 생성"""
-        config = COMMUNITY_BOARDS.get("fmkorea", {})
+        config = COMMUNITY_BOARDS.get("clien", {})
         for board in config.get("boards", []):
             if board["id"] == board_id:
                 path = board["path"]
                 if "?" in path:
-                    return f"{self.BASE_URL}/{path}&page={page}"
-                return f"{self.BASE_URL}/{path}?page={page}"
+                    return f"{self.BASE_URL}/{path}&po={page - 1}"
+                return f"{self.BASE_URL}/{path}?po={page - 1}"
 
-        # 기본값: 유머 인기글
-        return f"{self.BASE_URL}/humor?sort_index=pop&page={page}"
+        # 기본값: 추천글
+        return f"{self.BASE_URL}/service/recommend?po={page - 1}"
 
     async def get_board_list(self, board_id: str, page: int = 1) -> List[dict]:
-        """게시판 글 목록 파싱 (fm_best_widget 구조)"""
+        """게시판 글 목록 파싱"""
         url = self._get_board_url(board_id, page)
         print(f"[{self.SOURCE_NAME}] Fetching: {url}")
 
@@ -46,33 +46,24 @@ class FMKoreaCollector(BaseCommunityCollector):
         soup = BeautifulSoup(response.text, "html.parser")
         posts = []
 
-        # 게시글 목록: div.fm_best_widget li.li 또는 li.li > div.li
-        rows = soup.select("div.fm_best_widget li.li")
-        if not rows:
-            # fallback: 기존 선택자
-            rows = soup.select("li.li")
+        # 게시글 목록: div.list_item.symph_row
+        rows = soup.select("div.list_item.symph_row")
         print(f"[{self.SOURCE_NAME}] Found {len(rows)} rows")
 
         for row in rows:
             try:
-                # 제목: span.ellipsis-target
-                title_elem = row.select_one("span.ellipsis-target")
-                if not title_elem:
-                    # fallback
-                    title_elem = row.select_one("h3.title a")
-
+                # 제목: span.subject_fixed (title 속성에 전체 제목)
+                title_elem = row.select_one("span.subject_fixed")
                 if not title_elem:
                     continue
 
-                title = title_elem.get_text(strip=True)
+                # title 속성에 전체 제목이 있음
+                title = title_elem.get("title", "") or title_elem.get_text(strip=True)
                 if not title:
                     continue
 
-                # 링크: h3.title a[href]
-                link_elem = row.select_one("h3.title a")
-                if not link_elem:
-                    link_elem = row.select_one("a.title")
-
+                # 링크: a.list_subject
+                link_elem = row.select_one("a.list_subject")
                 if not link_elem:
                     continue
 
@@ -88,53 +79,40 @@ class FMKoreaCollector(BaseCommunityCollector):
                 else:
                     full_url = href
 
-                # 추천수: span.count 또는 a.pc_voted_count span.count
+                # 공감수: div.list_symph span
                 like_count = 0
-                like_elem = row.select_one("span.count")
+                like_elem = row.select_one("div.list_symph span")
                 if like_elem:
                     num = re.sub(r"[^\d]", "", like_elem.get_text())
                     like_count = int(num) if num else 0
 
-                # 댓글수: span.comment_count (대괄호 포함, 예: [15])
+                # 댓글수: span.rSymph05
                 comment_count = 0
-                comment_elem = row.select_one("span.comment_count")
+                comment_elem = row.select_one("span.rSymph05")
                 if comment_elem:
-                    text = comment_elem.get_text(strip=True)
-                    # 대괄호 제거: [15] -> 15
-                    num = re.sub(r"[^\d]", "", text)
+                    num = re.sub(r"[^\d]", "", comment_elem.get_text())
                     comment_count = int(num) if num else 0
 
-                # 카테고리: span.category a
+                # 조회수: div.list_hit span.hit
+                view_count = 0
+                view_elem = row.select_one("div.list_hit span.hit")
+                if view_elem:
+                    num = re.sub(r"[^\d]", "", view_elem.get_text())
+                    view_count = int(num) if num else 0
+
+                # 게시판: span.shortname
                 category = ""
-                category_elem = row.select_one("span.category a")
+                category_elem = row.select_one("span.shortname")
                 if category_elem:
                     category = category_elem.get_text(strip=True)
-
-                # 시간: span.regdate
-                date_str = ""
-                time_elem = row.select_one("span.regdate")
-                if time_elem:
-                    date_str = time_elem.get_text(strip=True)
-
-                # 작성자: span.author
-                author = ""
-                author_elem = row.select_one("span.author")
-                if author_elem:
-                    author = author_elem.get_text(strip=True)
-
-                # 포텐 여부: span.STAR-BEST
-                is_poten = row.select_one("span.STAR-BEST") is not None
 
                 posts.append({
                     "title": title,
                     "url": full_url,
-                    "view_count": 0,  # 목록에서는 조회수 안 보임
+                    "view_count": view_count,
                     "comment_count": comment_count,
                     "like_count": like_count,
                     "category": category,
-                    "date_str": date_str,
-                    "author": author,
-                    "is_poten": is_poten,
                 })
 
             except Exception as e:
@@ -156,17 +134,17 @@ class FMKoreaCollector(BaseCommunityCollector):
 
         # 제목
         title_elem = (
-            soup.select_one("span.np_18px_span") or
-            soup.select_one("h1.np_18px") or
-            soup.select_one("div.title_area h1")
+            soup.select_one("h3.post_subject span") or
+            soup.select_one("h3.post_subject") or
+            soup.select_one("div.post_title")
         )
         title = title_elem.get_text(strip=True) if title_elem else ""
 
         # 본문
         content_div = (
-            soup.select_one("div.rd_body article") or
-            soup.select_one("div.rd_body") or
-            soup.select_one("article")
+            soup.select_one("div.post_content article") or
+            soup.select_one("div.post_content") or
+            soup.select_one("article.post_article")
         )
         content = ""
         if content_div:
@@ -181,10 +159,9 @@ class FMKoreaCollector(BaseCommunityCollector):
         # 작성자
         author = self._parse_author(soup)
 
-        # 조회수, 추천수
+        # 조회수, 공감수
         view_count = self._parse_meta_value(soup, "조회")
-        like_count = self._parse_meta_value(soup, "추천")
-        comment_count = self._parse_meta_value(soup, "댓글")
+        like_count = self._parse_meta_value(soup, "공감")
 
         return CommunityPost(
             title=title,
@@ -195,17 +172,17 @@ class FMKoreaCollector(BaseCommunityCollector):
             category="",  # 호출 시 지정됨
             published_at=published_at,
             view_count=view_count,
-            comment_count=comment_count,
             like_count=like_count,
             author=author,
         )
 
     def _parse_datetime(self, soup) -> Optional[datetime]:
         """작성 시간 파싱"""
+        # span.timestamp (2026-01-03 12:33:26 형식)
         time_elem = (
-            soup.select_one("span.date") or
-            soup.select_one("span.time") or
-            soup.select_one("div.top_area span.date")
+            soup.select_one("span.timestamp") or
+            soup.select_one("span.post_time") or
+            soup.select_one("div.post_info span.time")
         )
 
         if not time_elem:
@@ -213,54 +190,50 @@ class FMKoreaCollector(BaseCommunityCollector):
 
         text = time_elem.get_text(strip=True)
 
-        # "2025.01.02 14:30" 형식
+        # "2026-01-03 12:33:26" 형식
         try:
-            return datetime.strptime(text, "%Y.%m.%d %H:%M")
+            return datetime.strptime(text[:19], "%Y-%m-%d %H:%M:%S")
         except ValueError:
             pass
 
-        # "01.02 14:30" 형식 (올해)
+        # "2026-01-03 12:33" 형식
         try:
-            dt = datetime.strptime(text, "%m.%d %H:%M")
+            return datetime.strptime(text[:16], "%Y-%m-%d %H:%M")
+        except ValueError:
+            pass
+
+        # "01-03 12:33" 형식 (올해)
+        try:
+            dt = datetime.strptime(text[:11], "%m-%d %H:%M")
             return dt.replace(year=datetime.now().year)
         except ValueError:
             pass
 
-        # "14:30" 형식 (오늘)
+        # "12:33" 형식 (오늘)
         try:
-            dt = datetime.strptime(text, "%H:%M")
+            dt = datetime.strptime(text[:5], "%H:%M")
             now = datetime.now()
             return dt.replace(year=now.year, month=now.month, day=now.day)
         except ValueError:
             pass
 
-        # "N분 전", "N시간 전" 형식
-        if "분 전" in text:
-            match = re.search(r"(\d+)분", text)
-            if match:
-                return datetime.now() - timedelta(minutes=int(match.group(1)))
-        elif "시간 전" in text:
-            match = re.search(r"(\d+)시간", text)
-            if match:
-                return datetime.now() - timedelta(hours=int(match.group(1)))
-
         return datetime.now()
 
     def _parse_author(self, soup) -> Optional[str]:
         """작성자 파싱"""
+        # div.list_author span.nickname span
         author_elem = (
-            soup.select_one("a.member_plate") or
-            soup.select_one("span.member") or
-            soup.select_one("div.top_area a.nick")
+            soup.select_one("div.post_info span.nickname") or
+            soup.select_one("span.nickname span") or
+            soup.select_one("a.member")
         )
         if author_elem:
             return author_elem.get_text(strip=True)
         return None
 
     def _parse_meta_value(self, soup, label: str) -> int:
-        """메타 정보 값 파싱 (조회, 추천 등)"""
-        # "조회 수 1234" 형태 또는 아이콘 + 숫자 형태
-        for elem in soup.select("span, div.top_area *"):
+        """메타 정보 값 파싱"""
+        for elem in soup.select("span, div.post_info *"):
             text = elem.get_text(strip=True)
             if label in text:
                 num = re.search(r"(\d[\d,]*)", text)

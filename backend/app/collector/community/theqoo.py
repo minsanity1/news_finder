@@ -1,5 +1,5 @@
 """
-에펨코리아 수집기
+더쿠 수집기
 """
 from datetime import datetime, timedelta
 from typing import List, Optional
@@ -11,28 +11,26 @@ from .base import BaseCommunityCollector, CommunityPost
 from .config import COMMUNITY_BOARDS
 
 
-class FMKoreaCollector(BaseCommunityCollector):
-    """에펨코리아 커뮤니티 수집기"""
+class TheqooCollector(BaseCommunityCollector):
+    """더쿠 커뮤니티 수집기"""
 
-    SOURCE_NAME = "에펨코리아"
-    BASE_URL = "https://www.fmkorea.com"
-    REQUEST_DELAY = (1.5, 3.0)  # 에펨코리아는 좀 더 조심
+    SOURCE_NAME = "더쿠"
+    BASE_URL = "https://theqoo.net"
+    REQUEST_DELAY = (1.0, 2.0)
 
     def _get_board_url(self, board_id: str, page: int = 1) -> str:
         """게시판 URL 생성"""
-        config = COMMUNITY_BOARDS.get("fmkorea", {})
+        config = COMMUNITY_BOARDS.get("theqoo", {})
         for board in config.get("boards", []):
             if board["id"] == board_id:
                 path = board["path"]
-                if "?" in path:
-                    return f"{self.BASE_URL}/{path}&page={page}"
                 return f"{self.BASE_URL}/{path}?page={page}"
 
-        # 기본값: 유머 인기글
-        return f"{self.BASE_URL}/humor?sort_index=pop&page={page}"
+        # 기본값: 핫글
+        return f"{self.BASE_URL}/hot?page={page}"
 
     async def get_board_list(self, board_id: str, page: int = 1) -> List[dict]:
-        """게시판 글 목록 파싱 (fm_best_widget 구조)"""
+        """게시판 글 목록 파싱"""
         url = self._get_board_url(board_id, page)
         print(f"[{self.SOURCE_NAME}] Fetching: {url}")
 
@@ -46,21 +44,20 @@ class FMKoreaCollector(BaseCommunityCollector):
         soup = BeautifulSoup(response.text, "html.parser")
         posts = []
 
-        # 게시글 목록: div.fm_best_widget li.li 또는 li.li > div.li
-        rows = soup.select("div.fm_best_widget li.li")
+        # 게시글 목록: table.theqoo_board_table tbody tr (공지 제외)
+        rows = soup.select("table.theqoo_board_table tbody tr:not(.notice)")
         if not rows:
-            # fallback: 기존 선택자
-            rows = soup.select("li.li")
+            rows = soup.select("table.bd_lst tbody tr:not(.notice)")
         print(f"[{self.SOURCE_NAME}] Found {len(rows)} rows")
 
         for row in rows:
             try:
-                # 제목: span.ellipsis-target
-                title_elem = row.select_one("span.ellipsis-target")
-                if not title_elem:
-                    # fallback
-                    title_elem = row.select_one("h3.title a")
+                # 제목: td.title > a (첫번째 a 태그)
+                title_td = row.select_one("td.title")
+                if not title_td:
+                    continue
 
+                title_elem = title_td.select_one("a:not(.replyNum)")
                 if not title_elem:
                     continue
 
@@ -68,15 +65,8 @@ class FMKoreaCollector(BaseCommunityCollector):
                 if not title:
                     continue
 
-                # 링크: h3.title a[href]
-                link_elem = row.select_one("h3.title a")
-                if not link_elem:
-                    link_elem = row.select_one("a.title")
-
-                if not link_elem:
-                    continue
-
-                href = link_elem.get("href", "")
+                # 링크
+                href = title_elem.get("href", "")
                 if not href:
                     continue
 
@@ -88,53 +78,40 @@ class FMKoreaCollector(BaseCommunityCollector):
                 else:
                     full_url = href
 
-                # 추천수: span.count 또는 a.pc_voted_count span.count
-                like_count = 0
-                like_elem = row.select_one("span.count")
-                if like_elem:
-                    num = re.sub(r"[^\d]", "", like_elem.get_text())
-                    like_count = int(num) if num else 0
-
-                # 댓글수: span.comment_count (대괄호 포함, 예: [15])
+                # 댓글수: a.replyNum
                 comment_count = 0
-                comment_elem = row.select_one("span.comment_count")
+                comment_elem = title_td.select_one("a.replyNum")
                 if comment_elem:
-                    text = comment_elem.get_text(strip=True)
-                    # 대괄호 제거: [15] -> 15
-                    num = re.sub(r"[^\d]", "", text)
+                    num = re.sub(r"[^\d]", "", comment_elem.get_text())
                     comment_count = int(num) if num else 0
 
-                # 카테고리: span.category a
+                # 조회수: td.m_no
+                view_count = 0
+                view_elem = row.select_one("td.m_no")
+                if view_elem:
+                    num = re.sub(r"[^\d]", "", view_elem.get_text())
+                    view_count = int(num) if num else 0
+
+                # 카테고리: td.cate span
                 category = ""
-                category_elem = row.select_one("span.category a")
+                category_elem = row.select_one("td.cate span")
                 if category_elem:
                     category = category_elem.get_text(strip=True)
 
-                # 시간: span.regdate
+                # 날짜: td.time
                 date_str = ""
-                time_elem = row.select_one("span.regdate")
+                time_elem = row.select_one("td.time")
                 if time_elem:
                     date_str = time_elem.get_text(strip=True)
-
-                # 작성자: span.author
-                author = ""
-                author_elem = row.select_one("span.author")
-                if author_elem:
-                    author = author_elem.get_text(strip=True)
-
-                # 포텐 여부: span.STAR-BEST
-                is_poten = row.select_one("span.STAR-BEST") is not None
 
                 posts.append({
                     "title": title,
                     "url": full_url,
-                    "view_count": 0,  # 목록에서는 조회수 안 보임
+                    "view_count": view_count,
                     "comment_count": comment_count,
-                    "like_count": like_count,
+                    "like_count": 0,  # 목록에서는 추천수 안 보임
                     "category": category,
                     "date_str": date_str,
-                    "author": author,
-                    "is_poten": is_poten,
                 })
 
             except Exception as e:
@@ -156,9 +133,9 @@ class FMKoreaCollector(BaseCommunityCollector):
 
         # 제목
         title_elem = (
-            soup.select_one("span.np_18px_span") or
-            soup.select_one("h1.np_18px") or
-            soup.select_one("div.title_area h1")
+            soup.select_one("h3.title a") or
+            soup.select_one("h3.title") or
+            soup.select_one("div.rd_hd h3")
         )
         title = title_elem.get_text(strip=True) if title_elem else ""
 
@@ -166,7 +143,7 @@ class FMKoreaCollector(BaseCommunityCollector):
         content_div = (
             soup.select_one("div.rd_body article") or
             soup.select_one("div.rd_body") or
-            soup.select_one("article")
+            soup.select_one("article.rd_body")
         )
         content = ""
         if content_div:
@@ -205,7 +182,7 @@ class FMKoreaCollector(BaseCommunityCollector):
         time_elem = (
             soup.select_one("span.date") or
             soup.select_one("span.time") or
-            soup.select_one("div.top_area span.date")
+            soup.select_one("div.rd_hd span.date")
         )
 
         if not time_elem:
@@ -213,22 +190,22 @@ class FMKoreaCollector(BaseCommunityCollector):
 
         text = time_elem.get_text(strip=True)
 
-        # "2025.01.02 14:30" 형식
+        # "2026.01.03 12:33" 형식
         try:
-            return datetime.strptime(text, "%Y.%m.%d %H:%M")
+            return datetime.strptime(text[:16], "%Y.%m.%d %H:%M")
         except ValueError:
             pass
 
-        # "01.02 14:30" 형식 (올해)
+        # "01.03 12:33" 형식 (올해)
         try:
-            dt = datetime.strptime(text, "%m.%d %H:%M")
+            dt = datetime.strptime(text[:11], "%m.%d %H:%M")
             return dt.replace(year=datetime.now().year)
         except ValueError:
             pass
 
-        # "14:30" 형식 (오늘)
+        # "12:33" 형식 (오늘)
         try:
-            dt = datetime.strptime(text, "%H:%M")
+            dt = datetime.strptime(text[:5], "%H:%M")
             now = datetime.now()
             return dt.replace(year=now.year, month=now.month, day=now.day)
         except ValueError:
@@ -251,16 +228,15 @@ class FMKoreaCollector(BaseCommunityCollector):
         author_elem = (
             soup.select_one("a.member_plate") or
             soup.select_one("span.member") or
-            soup.select_one("div.top_area a.nick")
+            soup.select_one("div.rd_hd span.nick")
         )
         if author_elem:
             return author_elem.get_text(strip=True)
         return None
 
     def _parse_meta_value(self, soup, label: str) -> int:
-        """메타 정보 값 파싱 (조회, 추천 등)"""
-        # "조회 수 1234" 형태 또는 아이콘 + 숫자 형태
-        for elem in soup.select("span, div.top_area *"):
+        """메타 정보 값 파싱"""
+        for elem in soup.select("span, div.rd_hd *"):
             text = elem.get_text(strip=True)
             if label in text:
                 num = re.search(r"(\d[\d,]*)", text)

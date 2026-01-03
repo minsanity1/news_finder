@@ -6,11 +6,10 @@
 COMMUNITY_BOARDS = {
     "fmkorea": {
         "name": "에펨코리아",
-        "enabled": False,  # 봇 차단으로 임시 비활성화
+        "enabled": True,
         "boards": [
-            {"id": "핫이슈", "path": "index.php?mid=best", "priority": 1, "collect_limit": 30},
-            {"id": "유머", "path": "index.php?mid=humor", "priority": 2, "collect_limit": 20},
-            {"id": "자유", "path": "index.php?mid=free", "priority": 3, "collect_limit": 20},
+            {"id": "유머인기", "path": "humor?sort_index=pop", "priority": 1, "collect_limit": 30},
+            {"id": "핫이슈", "path": "index.php?mid=best", "priority": 2, "collect_limit": 20},
         ],
         "collect_interval_minutes": 30,
     },
@@ -25,18 +24,18 @@ COMMUNITY_BOARDS = {
     },
     "clien": {
         "name": "클리앙",
-        "enabled": False,  # Phase 2-B
+        "enabled": True,
         "boards": [
-            {"id": "모두의공원", "path": "service/board/park", "priority": 1, "collect_limit": 30},
-            {"id": "새로운소식", "path": "service/board/news", "priority": 2, "collect_limit": 20},
+            {"id": "추천글", "path": "service/recommend", "priority": 1, "collect_limit": 30},
+            {"id": "모두의공원", "path": "service/board/park", "priority": 2, "collect_limit": 20},
         ],
-        "collect_interval_minutes": 60,
+        "collect_interval_minutes": 30,
     },
     "theqoo": {
         "name": "더쿠",
-        "enabled": False,  # Phase 2-B
+        "enabled": True,
         "boards": [
-            {"id": "이슈", "path": "hot", "priority": 1, "collect_limit": 30},
+            {"id": "핫글", "path": "hot", "priority": 1, "collect_limit": 30},
         ],
         "collect_interval_minutes": 30,
     },

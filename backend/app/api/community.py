@@ -12,6 +12,8 @@ from app.database.repository import NewsRepository
 from app.collector.community import (
     FMKoreaCollector,
     PpomppuCollector,
+    ClienCollector,
+    TheqooCollector,
     COMMUNITY_BOARDS,
 )
 from app.collector.community.config import get_enabled_boards, get_board_config
@@ -23,6 +25,8 @@ router = APIRouter()
 COLLECTORS = {
     "fmkorea": FMKoreaCollector,
     "ppomppu": PpomppuCollector,
+    "clien": ClienCollector,
+    "theqoo": TheqooCollector,
 }
 
 
