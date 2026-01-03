@@ -26,15 +26,29 @@ class NewsResponse(BaseModel):
     category: Optional[str]
     published_at: Optional[str]
     collected_at: Optional[str]
+    # 소스 타입 (news / community)
+    source_type: Optional[str] = "news"
+    # 커뮤니티 전용 메타
+    view_count: Optional[int] = None
+    comment_count: Optional[int] = None
+    like_count: Optional[int] = None
+    author: Optional[str] = None
+    # 상태
     is_read: bool
     is_bookmarked: bool
     is_used: bool
+    # AI 분석 결과
     ai_analyzed: bool
     ai_score: Optional[int]
+    ai_grade: Optional[str] = None
     ai_category: Optional[str]
     ai_reason: Optional[str]
     ai_key_points: Optional[List[str]]
+    ai_breakdown: Optional[dict] = None
     ai_youtube_potential: Optional[str]
+    ai_male_2040_check: Optional[str] = None
+    ai_male_2040_reason: Optional[str] = None
+    ai_suggested_title: Optional[str] = None
     ai_analyzed_at: Optional[str]
 
 
