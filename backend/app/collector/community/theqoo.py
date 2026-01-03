@@ -52,22 +52,36 @@ class TheqooCollector(BaseCommunityCollector):
 
         for row in rows:
             try:
-                # 제목: td.title > a (첫번째 a 태그)
+                # 제목: td.title > a (첫 번째 a 태그, replyNum 제외)
                 title_td = row.select_one("td.title")
                 if not title_td:
                     continue
 
-                title_elem = title_td.select_one("a:not(.replyNum)")
+                # 직접 자식 a 태그들 중 첫 번째 (replyNum은 제외)
+                all_links = title_td.select("a")
+                title_elem = None
+                for link in all_links:
+                    if "replyNum" not in link.get("class", []):
+                        title_elem = link
+                        break
+
                 if not title_elem:
                     continue
 
-                title = title_elem.get_text(strip=True)
-                if not title:
-                    continue
-
-                # 링크
+                # 링크 먼저 추출
                 href = title_elem.get("href", "")
                 if not href:
+                    continue
+
+                # 제목 텍스트 추출 (내부 태그 텍스트 제거)
+                # 아이콘 등 제거
+                for tag in title_elem.find_all(["i", "span.replyNum"]):
+                    tag.decompose()
+
+                title = title_elem.get_text(strip=True)
+
+                # 제목이 없거나 너무 짧으면 스킵
+                if not title or len(title) < 2:
                     continue
 
                 # URL 정규화

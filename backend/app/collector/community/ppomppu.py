@@ -61,30 +61,32 @@ class PpomppuCollector(BaseCommunityCollector):
 
         for row in rows:
             try:
-                # 제목 링크: a.baseList-title
-                title_elem = row.select_one("a.baseList-title")
-                if not title_elem:
+                # AD(광고) 게시글 스킵 (먼저 체크)
+                if row.select_one("span#ad-icon"):
                     continue
 
-                # 제목 텍스트 (이미지, video 태그 등 제외)
-                # video 태그 제거
-                for video in title_elem.find_all("video"):
-                    video.decompose()
+                # 제목 링크: a.baseList-title (두 번째가 실제 제목)
+                title_links = row.select("a.baseList-title")
+                if not title_links:
+                    continue
+
+                # 두 번째 a 태그가 실제 제목 (첫 번째는 래퍼)
+                title_elem = title_links[-1] if len(title_links) > 1 else title_links[0]
+
+                # video 태그와 불필요한 요소 제거
+                for tag in title_elem.find_all(["video", "img", "i"]):
+                    tag.decompose()
 
                 title = title_elem.get_text(strip=True)
-                # 앞의 아이콘 텍스트 제거
-                title = re.sub(r'^(AD|hot)\s*', '', title)
-                # video 태그 fallback 텍스트 제거
+                # video 태그 fallback 텍스트 및 기타 노이즈 제거
                 title = re.sub(r"Your browser does not support the video tag\.?\s*", "", title)
+                title = re.sub(r"^\.\s*", "", title)  # 앞의 점 제거
+                title = re.sub(r"^(AD|hot)\s*", "", title)  # AD, hot 텍스트 제거
                 title = title.strip()
 
                 href = title_elem.get("href", "")
                 # 제목이 비어있거나 너무 짧으면 스킵
                 if not href or not title or len(title) < 2:
-                    continue
-
-                # AD(광고) 게시글 스킵
-                if row.select_one("span#ad-icon"):
                     continue
 
                 # URL 정규화
@@ -109,13 +111,13 @@ class PpomppuCollector(BaseCommunityCollector):
                 like_count = 0
 
                 if len(date_tds) >= 3:
-                    # 마지막 td가 조회수
-                    view_text = date_tds[-1].get_text(strip=True)
+                    # 세 번째(마지막) td가 조회수
+                    view_text = date_tds[2].get_text(strip=True)
                     view_num = re.sub(r"[^\d]", "", view_text)
                     view_count = int(view_num) if view_num else 0
 
-                    # 두번째가 추천-비추천 (예: "8 - 0")
-                    like_text = date_tds[-2].get_text(strip=True)
+                    # 두 번째가 추천-비추천 (예: "8 - 0")
+                    like_text = date_tds[1].get_text(strip=True)
                     like_match = re.match(r"(\d+)\s*-\s*(\d+)", like_text)
                     if like_match:
                         like_count = int(like_match.group(1))

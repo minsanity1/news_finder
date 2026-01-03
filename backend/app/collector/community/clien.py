@@ -82,20 +82,28 @@ class ClienCollector(BaseCommunityCollector):
                 # 공감수: div.list_symph span
                 like_count = 0
                 like_elem = row.select_one("div.list_symph span")
+                if not like_elem:
+                    like_elem = row.select_one("div.list_symph")
                 if like_elem:
                     num = re.sub(r"[^\d]", "", like_elem.get_text())
                     like_count = int(num) if num else 0
 
-                # 댓글수: span.rSymph05
+                # 댓글수: span.rSymph05 또는 다른 댓글 셀렉터
                 comment_count = 0
                 comment_elem = row.select_one("span.rSymph05")
+                if not comment_elem:
+                    comment_elem = row.select_one("span.reply_symph")
                 if comment_elem:
                     num = re.sub(r"[^\d]", "", comment_elem.get_text())
                     comment_count = int(num) if num else 0
 
-                # 조회수: div.list_hit span.hit
+                # 조회수: span.hit
                 view_count = 0
-                view_elem = row.select_one("div.list_hit span.hit")
+                view_elem = row.select_one("span.hit")
+                if not view_elem:
+                    view_elem = row.select_one("div.list_hit span")
+                if not view_elem:
+                    view_elem = row.select_one("div.list_hit")
                 if view_elem:
                     num = re.sub(r"[^\d]", "", view_elem.get_text())
                     view_count = int(num) if num else 0
