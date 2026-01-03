@@ -13,7 +13,7 @@ import sys
 # 스크립트 위치 기준으로 DB 경로 설정
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 BACKEND_DIR = os.path.dirname(SCRIPT_DIR)
-DB_PATH = os.path.join(BACKEND_DIR, "news.db")
+DB_PATH = os.path.join(BACKEND_DIR, "data", "news.db")
 
 
 def migrate():
