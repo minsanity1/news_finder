@@ -55,56 +55,28 @@ class PpomppuCollector(BaseCommunityCollector):
         soup = BeautifulSoup(content, "html.parser")
         posts = []
 
-        # hot.php 페이지 구조: li.board-list-item 또는 테이블 형태
-        # 방법 1: 리스트 아이템 형태
-        items = soup.select("ul.board-list li, div.board-list li, li.list-item")
+        # hot.php 구조: <tr class="baseList ...">
+        rows = soup.select("tr.baseList")
+        print(f"[{self.SOURCE_NAME}] Found {len(rows)} rows")
 
-        if not items:
-            # 방법 2: 테이블 형태
-            items = soup.select("tr.common-list0, tr.common-list1, tr.list0, tr.list1, tbody tr")
-
-        if not items:
-            # 방법 3: div 기반 리스트
-            items = soup.select("div.hot-list-item, div.board-item, div.list-row")
-
-        print(f"[{self.SOURCE_NAME}] Found {len(items)} items")
-
-        for item in items:
+        for row in rows:
             try:
-                # 제목 및 링크 찾기 (여러 선택자 시도)
-                title_elem = (
-                    item.select_one("a.title") or
-                    item.select_one("a.list-title") or
-                    item.select_one("a.subject") or
-                    item.select_one("td.title a") or
-                    item.select_one("div.title a") or
-                    item.select_one("span.title a") or
-                    item.select_one("a[href*='view.php']") or
-                    item.select_one("a[href*='zboard']") or
-                    item.find("a", href=re.compile(r"(view|read)"))
-                )
-
-                if not title_elem:
-                    # 마지막 시도: 첫 번째 a 태그
-                    all_links = item.select("a")
-                    for link in all_links:
-                        href = link.get("href", "")
-                        text = link.get_text(strip=True)
-                        if href and text and len(text) > 5 and "view" in href.lower():
-                            title_elem = link
-                            break
-
+                # 제목 링크: a.baseList-title
+                title_elem = row.select_one("a.baseList-title")
                 if not title_elem:
                     continue
 
+                # 제목 텍스트 (이미지 제외)
                 title = title_elem.get_text(strip=True)
-                href = title_elem.get("href", "")
+                # 앞의 아이콘 텍스트 제거
+                title = re.sub(r'^(AD|hot)\s*', '', title)
 
+                href = title_elem.get("href", "")
                 if not href or not title:
                     continue
 
-                # 제목이 너무 짧으면 스킵
-                if len(title) < 3:
+                # AD(광고) 게시글 스킵
+                if row.select_one("span#ad-icon"):
                     continue
 
                 # URL 정규화
@@ -115,10 +87,30 @@ class PpomppuCollector(BaseCommunityCollector):
                 else:
                     full_url = href
 
-                # 조회수, 추천수, 댓글수 파싱
-                view_count = self._extract_number(item, ["조회", "view", "hit"])
-                like_count = self._extract_number(item, ["추천", "vote", "like"])
-                comment_count = self._parse_comment_count(item, title_elem)
+                # 댓글수: span.list_comment2
+                comment_count = 0
+                comment_elem = row.select_one("span.list_comment2")
+                if comment_elem:
+                    num = re.sub(r"[^\d]", "", comment_elem.get_text())
+                    comment_count = int(num) if num else 0
+
+                # td.board_date 컬럼들에서 조회수, 추천수 파싱
+                # 순서: 날짜, 추천-비추천, 조회수
+                date_tds = row.select("td.board_date")
+                view_count = 0
+                like_count = 0
+
+                if len(date_tds) >= 3:
+                    # 마지막 td가 조회수
+                    view_text = date_tds[-1].get_text(strip=True)
+                    view_num = re.sub(r"[^\d]", "", view_text)
+                    view_count = int(view_num) if view_num else 0
+
+                    # 두번째가 추천-비추천 (예: "8 - 0")
+                    like_text = date_tds[-2].get_text(strip=True)
+                    like_match = re.match(r"(\d+)\s*-\s*(\d+)", like_text)
+                    if like_match:
+                        like_count = int(like_match.group(1))
 
                 posts.append({
                     "title": title,
@@ -129,7 +121,7 @@ class PpomppuCollector(BaseCommunityCollector):
                 })
 
             except Exception as e:
-                print(f"[{self.SOURCE_NAME}] Parse item error: {e}")
+                print(f"[{self.SOURCE_NAME}] Parse row error: {e}")
                 continue
 
         print(f"[{self.SOURCE_NAME}] Parsed {len(posts)} posts")
