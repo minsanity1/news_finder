@@ -6,7 +6,7 @@
 COMMUNITY_BOARDS = {
     "fmkorea": {
         "name": "에펨코리아",
-        "enabled": True,
+        "enabled": False,  # 봇 차단으로 임시 비활성화
         "boards": [
             {"id": "핫이슈", "path": "index.php?mid=best", "priority": 1, "collect_limit": 30},
             {"id": "유머", "path": "index.php?mid=humor", "priority": 2, "collect_limit": 20},
