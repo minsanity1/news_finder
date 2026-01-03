@@ -66,13 +66,21 @@ class PpomppuCollector(BaseCommunityCollector):
                 if not title_elem:
                     continue
 
-                # 제목 텍스트 (이미지 제외)
+                # 제목 텍스트 (이미지, video 태그 등 제외)
+                # video 태그 제거
+                for video in title_elem.find_all("video"):
+                    video.decompose()
+
                 title = title_elem.get_text(strip=True)
                 # 앞의 아이콘 텍스트 제거
                 title = re.sub(r'^(AD|hot)\s*', '', title)
+                # video 태그 fallback 텍스트 제거
+                title = re.sub(r"Your browser does not support the video tag\.?\s*", "", title)
+                title = title.strip()
 
                 href = title_elem.get("href", "")
-                if not href or not title:
+                # 제목이 비어있거나 너무 짧으면 스킵
+                if not href or not title or len(title) < 2:
                     continue
 
                 # AD(광고) 게시글 스킵

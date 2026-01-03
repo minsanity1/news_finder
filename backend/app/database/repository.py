@@ -51,6 +51,7 @@ class NewsRepository:
         include_keywords: Optional[List[str]] = None,
         exclude_keywords: Optional[List[str]] = None,
         source: Optional[str] = None,
+        source_type: Optional[str] = None,
         category: Optional[str] = None,
         ai_min_score: Optional[int] = None,
         ai_category: Optional[str] = None,
@@ -63,6 +64,10 @@ class NewsRepository:
     ) -> tuple[List[News], int]:
         query = select(News)
         conditions = []
+
+        # source_type 필터 (news / community)
+        if source_type:
+            conditions.append(News.source_type == source_type)
 
         if keyword:
             conditions.append(

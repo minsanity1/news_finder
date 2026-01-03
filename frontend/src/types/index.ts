@@ -100,6 +100,7 @@ export interface NewsFilter {
   include_keywords?: string[];
   exclude_keywords?: string[];
   source?: string;
+  source_type?: SourceType;  // news / community
   category?: string;
   ai_min_score?: number;
   ai_category?: string;

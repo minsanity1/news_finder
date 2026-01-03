@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Settings, AlertTriangle, Search, HelpCircle, Users } from 'lucide-react';
+import { Settings, AlertTriangle, Search, HelpCircle, Users, Newspaper, MessageSquare } from 'lucide-react';
 import { useAIUsage } from '../hooks/useAIAnalysis';
+import { useFilterStore } from '../stores/filterStore';
 import SearchModal from './SearchModal';
 import SettingsModal from './SettingsModal';
 import HelpModal from './HelpModal';
@@ -12,6 +13,7 @@ export default function Header() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const { data: aiUsage } = useAIUsage();
+  const { filter, setFilter } = useFilterStore();
 
   return (
     <>
@@ -38,10 +40,46 @@ export default function Header() {
 
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-6">
             <h1 className="text-xl font-bold text-gray-900">
-              Korean News Filter
+              News Finder
             </h1>
+
+            {/* 뉴스/커뮤니티 탭 */}
+            <div className="flex items-center bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setFilter({ source_type: undefined, source: '' })}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  !filter.source_type
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                전체
+              </button>
+              <button
+                onClick={() => setFilter({ source_type: 'news', source: '' })}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  filter.source_type === 'news'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <Newspaper className="w-4 h-4" />
+                뉴스
+              </button>
+              <button
+                onClick={() => setFilter({ source_type: 'community', source: '' })}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  filter.source_type === 'community'
+                    ? 'bg-white text-purple-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <MessageSquare className="w-4 h-4" />
+                커뮤니티
+              </button>
+            </div>
           </div>
 
           <div className="flex items-center gap-4">

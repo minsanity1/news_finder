@@ -13,6 +13,7 @@ const defaultFilter: NewsFilter = {
   include_keywords: undefined,
   exclude_keywords: undefined,
   source: '',
+  source_type: undefined,  // undefined = 전체, 'news' = 뉴스만, 'community' = 커뮤니티만
   category: '',
   ai_min_score: undefined,
   ai_category: '',

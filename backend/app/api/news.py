@@ -66,6 +66,7 @@ async def get_news_list(
     include_keywords: Optional[str] = None,  # comma separated
     exclude_keywords: Optional[str] = None,  # comma separated
     source: Optional[str] = None,
+    source_type: Optional[str] = None,  # news / community
     category: Optional[str] = None,
     ai_min_score: Optional[int] = None,
     ai_category: Optional[str] = None,
@@ -111,6 +112,7 @@ async def get_news_list(
         include_keywords=parsed_include,
         exclude_keywords=parsed_exclude,
         source=source,
+        source_type=source_type,
         category=category,
         ai_min_score=ai_min_score,
         ai_category=ai_category,

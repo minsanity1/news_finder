@@ -8,6 +8,9 @@ import {
   RefreshCw,
   Sparkles,
   Loader2,
+  Eye,
+  ThumbsUp,
+  MessageCircle,
 } from 'lucide-react';
 import type { News } from '../types';
 import { useUpdateNews } from '../hooks/useNews';
@@ -192,7 +195,31 @@ export default function NewsCard({ news, isSelected, onSelect }: NewsCardProps) 
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          {/* 커뮤니티 메타 정보 */}
+          {news.source_type === 'community' && (
+            <div className="flex items-center gap-2 text-gray-500">
+              {news.view_count !== null && news.view_count > 0 && (
+                <span className="flex items-center gap-0.5" title="조회수">
+                  <Eye className="w-3 h-3" />
+                  {news.view_count.toLocaleString()}
+                </span>
+              )}
+              {news.like_count !== null && news.like_count > 0 && (
+                <span className="flex items-center gap-0.5" title="좋아요">
+                  <ThumbsUp className="w-3 h-3" />
+                  {news.like_count.toLocaleString()}
+                </span>
+              )}
+              {news.comment_count !== null && news.comment_count > 0 && (
+                <span className="flex items-center gap-0.5" title="댓글">
+                  <MessageCircle className="w-3 h-3" />
+                  {news.comment_count.toLocaleString()}
+                </span>
+              )}
+            </div>
+          )}
+
           {news.published_at && (
             <span>
               {format(new Date(news.published_at), 'MM/dd HH:mm', { locale: ko })}

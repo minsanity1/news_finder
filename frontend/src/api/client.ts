@@ -31,6 +31,7 @@ export const newsApi = {
       params.append('exclude_keywords', filter.exclude_keywords.join(','));
     }
     if (filter.source) params.append('source', filter.source);
+    if (filter.source_type) params.append('source_type', filter.source_type);
     if (filter.category) params.append('category', filter.category);
     if (filter.ai_min_score !== undefined) params.append('ai_min_score', String(filter.ai_min_score));
     if (filter.ai_category) params.append('ai_category', filter.ai_category);
