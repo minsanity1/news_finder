@@ -240,6 +240,28 @@ export const communityApi = {
     const response = await api.post('/community/collect/all');
     return response.data;
   },
+
+  test: async (
+    source: string = 'ppomppu',
+    board: string = '핫게시글',
+    limit: number = 5
+  ): Promise<{
+    success: boolean;
+    source: string;
+    board: string;
+    found?: number;
+    posts?: Array<{
+      title: string;
+      url: string;
+      view_count: number;
+      comment_count: number;
+      like_count: number;
+    }>;
+    error?: string;
+  }> => {
+    const response = await api.post(`/community/test?source=${source}&board=${encodeURIComponent(board)}&limit=${limit}`);
+    return response.data;
+  },
 };
 
 export default api;

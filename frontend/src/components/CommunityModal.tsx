@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Users, Loader2, RefreshCw } from 'lucide-react';
+import { X, Users, Loader2, RefreshCw, FlaskConical } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { communityApi } from '../api/client';
 
@@ -8,9 +8,25 @@ interface CommunityModalProps {
   onClose: () => void;
 }
 
+interface TestResult {
+  success: boolean;
+  source: string;
+  board: string;
+  found?: number;
+  posts?: Array<{
+    title: string;
+    url: string;
+    view_count: number;
+    comment_count: number;
+    like_count: number;
+  }>;
+  error?: string;
+}
+
 export default function CommunityModal({ isOpen, onClose }: CommunityModalProps) {
   const queryClient = useQueryClient();
   const [collectingBoard, setCollectingBoard] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<TestResult | null>(null);
 
   const { data: sources, isLoading: sourcesLoading } = useQuery({
     queryKey: ['community-sources'],
@@ -33,6 +49,16 @@ export default function CommunityModal({ isOpen, onClose }: CommunityModalProps)
     mutationFn: communityApi.collectAll,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['news'] });
+    },
+  });
+
+  const testMutation = useMutation({
+    mutationFn: () => communityApi.test('ppomppu', '핫게시글', 5),
+    onSuccess: (data) => {
+      setTestResult(data);
+    },
+    onError: () => {
+      setTestResult({ success: false, source: 'ppomppu', board: '핫게시글', error: '테스트 실패' });
     },
   });
 
@@ -87,6 +113,53 @@ export default function CommunityModal({ isOpen, onClose }: CommunityModalProps)
               {collectAllMutation.isSuccess && (
                 <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
                   수집 완료! {collectAllMutation.data.total_collected}개 발견, {collectAllMutation.data.total_saved}개 저장
+                </div>
+              )}
+
+              {/* 크롤링 테스트 버튼 */}
+              <button
+                onClick={() => {
+                  setTestResult(null);
+                  testMutation.mutate();
+                }}
+                disabled={testMutation.isPending}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {testMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    크롤링 테스트 중...
+                  </>
+                ) : (
+                  <>
+                    <FlaskConical className="w-4 h-4" />
+                    크롤링 테스트 (뽐뿌 핫게시글 5개)
+                  </>
+                )}
+              </button>
+
+              {/* 테스트 결과 */}
+              {testResult && (
+                <div className={`p-3 rounded-lg text-sm ${testResult.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                  <div className="font-semibold mb-2">
+                    {testResult.success ? '✅ 크롤링 성공!' : '❌ 크롤링 실패'}
+                    {testResult.found !== undefined && ` (${testResult.found}개 발견)`}
+                  </div>
+                  {testResult.error && (
+                    <div className="text-red-600">{testResult.error}</div>
+                  )}
+                  {testResult.posts && testResult.posts.length > 0 && (
+                    <ul className="space-y-1 mt-2">
+                      {testResult.posts.map((post, idx) => (
+                        <li key={idx} className="text-xs text-gray-700 truncate">
+                          • {post.title}
+                          <span className="text-gray-400 ml-1">
+                            (👁 {post.view_count} / 💬 {post.comment_count} / 👍 {post.like_count})
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               )}
 

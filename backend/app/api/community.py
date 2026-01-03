@@ -209,3 +209,44 @@ async def get_community_status():
         "available_collectors": list(COLLECTORS.keys()),
         "total_boards": sum(len(c["boards"]) for c in enabled.values()),
     }
+
+
+@router.post("/test")
+async def test_crawling(source: str = "ppomppu", board: str = "핫게시글", limit: int = 5):
+    """크롤링 테스트 (DB 저장 없이 결과만 반환)"""
+
+    if source not in COLLECTORS:
+        raise HTTPException(400, f"Unknown source: {source}")
+
+    board_config = get_board_config(source, board)
+    if not board_config:
+        # 기본 board_id로 테스트
+        available_boards = [b["id"] for b in COMMUNITY_BOARDS.get(source, {}).get("boards", [])]
+        raise HTTPException(400, f"Unknown board: {board}. Available: {available_boards}")
+
+    collector_class = COLLECTORS[source]
+    collector = collector_class()
+
+    try:
+        # 목록만 가져오기 (상세 없이)
+        posts = await collector.get_board_list(board, page=1)
+
+        # limit 적용
+        posts = posts[:limit]
+
+        return {
+            "success": True,
+            "source": source,
+            "board": board,
+            "found": len(posts),
+            "posts": posts,  # 제목, URL, 조회수 등
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "source": source,
+            "board": board,
+            "error": str(e),
+        }
+    finally:
+        await collector.close()
