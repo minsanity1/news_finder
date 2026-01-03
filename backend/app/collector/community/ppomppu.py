@@ -23,14 +23,21 @@ class PpomppuCollector(BaseCommunityCollector):
         config = COMMUNITY_BOARDS.get("ppomppu", {})
         for board in config.get("boards", []):
             if board["id"] == board_id:
-                return f"{self.BASE_URL}/{board['path']}&page={page}"
+                path = board['path']
+                # hot.php는 page 파라미터가 다름
+                if "hot.php" in path:
+                    if page > 1:
+                        return f"{self.BASE_URL}/{path}&page={page}"
+                    return f"{self.BASE_URL}/{path}"
+                return f"{self.BASE_URL}/{path}&page={page}"
 
         # 기본값
-        return f"{self.BASE_URL}/zboard/zboard.php?id={board_id}&page={page}"
+        return f"{self.BASE_URL}/hot.php?category=2&page={page}"
 
     async def get_board_list(self, board_id: str, page: int = 1) -> List[dict]:
-        """게시판 글 목록 파싱"""
+        """게시판 글 목록 파싱 (hot.php용)"""
         url = self._get_board_url(board_id, page)
+        print(f"[{self.SOURCE_NAME}] Fetching: {url}")
 
         try:
             response = await self._request_with_delay(url)
@@ -48,18 +55,44 @@ class PpomppuCollector(BaseCommunityCollector):
         soup = BeautifulSoup(content, "html.parser")
         posts = []
 
-        # 게시글 목록 파싱
-        rows = soup.select("tr.common-list0, tr.common-list1, tr.list0, tr.list1")
+        # hot.php 페이지 구조: li.board-list-item 또는 테이블 형태
+        # 방법 1: 리스트 아이템 형태
+        items = soup.select("ul.board-list li, div.board-list li, li.list-item")
 
-        for row in rows:
+        if not items:
+            # 방법 2: 테이블 형태
+            items = soup.select("tr.common-list0, tr.common-list1, tr.list0, tr.list1, tbody tr")
+
+        if not items:
+            # 방법 3: div 기반 리스트
+            items = soup.select("div.hot-list-item, div.board-item, div.list-row")
+
+        print(f"[{self.SOURCE_NAME}] Found {len(items)} items")
+
+        for item in items:
             try:
-                # 제목 및 링크
+                # 제목 및 링크 찾기 (여러 선택자 시도)
                 title_elem = (
-                    row.select_one("a.baseList-title") or
-                    row.select_one("a.list_title") or
-                    row.select_one("td.list_title a") or
-                    row.select_one("font.list_title a")
+                    item.select_one("a.title") or
+                    item.select_one("a.list-title") or
+                    item.select_one("a.subject") or
+                    item.select_one("td.title a") or
+                    item.select_one("div.title a") or
+                    item.select_one("span.title a") or
+                    item.select_one("a[href*='view.php']") or
+                    item.select_one("a[href*='zboard']") or
+                    item.find("a", href=re.compile(r"(view|read)"))
                 )
+
+                if not title_elem:
+                    # 마지막 시도: 첫 번째 a 태그
+                    all_links = item.select("a")
+                    for link in all_links:
+                        href = link.get("href", "")
+                        text = link.get_text(strip=True)
+                        if href and text and len(text) > 5 and "view" in href.lower():
+                            title_elem = link
+                            break
 
                 if not title_elem:
                     continue
@@ -67,25 +100,25 @@ class PpomppuCollector(BaseCommunityCollector):
                 title = title_elem.get_text(strip=True)
                 href = title_elem.get("href", "")
 
-                if not href:
+                if not href or not title:
+                    continue
+
+                # 제목이 너무 짧으면 스킵
+                if len(title) < 3:
                     continue
 
                 # URL 정규화
                 if href.startswith("/"):
                     full_url = self.BASE_URL + href
                 elif not href.startswith("http"):
-                    full_url = f"{self.BASE_URL}/zboard/{href}"
+                    full_url = f"{self.BASE_URL}/{href}"
                 else:
                     full_url = href
 
-                # 조회수 파싱
-                view_count = self._parse_count_from_row(row, 4)  # 보통 5번째 td
-
-                # 추천수 파싱
-                like_count = self._parse_count_from_row(row, 3)  # 보통 4번째 td
-
-                # 댓글수 파싱
-                comment_count = self._parse_comment_count(row, title_elem)
+                # 조회수, 추천수, 댓글수 파싱
+                view_count = self._extract_number(item, ["조회", "view", "hit"])
+                like_count = self._extract_number(item, ["추천", "vote", "like"])
+                comment_count = self._parse_comment_count(item, title_elem)
 
                 posts.append({
                     "title": title,
@@ -96,10 +129,33 @@ class PpomppuCollector(BaseCommunityCollector):
                 })
 
             except Exception as e:
-                print(f"[{self.SOURCE_NAME}] Parse row error: {e}")
+                print(f"[{self.SOURCE_NAME}] Parse item error: {e}")
                 continue
 
+        print(f"[{self.SOURCE_NAME}] Parsed {len(posts)} posts")
         return posts
+
+    def _extract_number(self, element, keywords: List[str]) -> int:
+        """요소에서 키워드 관련 숫자 추출"""
+        text = element.get_text()
+
+        # 키워드 근처의 숫자 찾기
+        for keyword in keywords:
+            pattern = rf"{keyword}[:\s]*(\d[\d,]*)"
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                return int(match.group(1).replace(",", ""))
+
+        # span/div에서 숫자 클래스 찾기
+        for span in element.select("span, div, td"):
+            cls = " ".join(span.get("class", []))
+            for keyword in keywords:
+                if keyword in cls.lower():
+                    num = re.sub(r"[^\d]", "", span.get_text())
+                    if num:
+                        return int(num)
+
+        return 0
 
     async def get_post_detail(self, post_url: str) -> CommunityPost:
         """게시글 상세 파싱"""

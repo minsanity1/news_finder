@@ -18,8 +18,8 @@ COMMUNITY_BOARDS = {
         "name": "뽐뿌",
         "enabled": True,
         "boards": [
-            {"id": "핫딜", "path": "zboard/zboard.php?id=ppomppu", "priority": 1, "collect_limit": 30},
-            {"id": "자유게시판", "path": "zboard/zboard.php?id=freeboard", "priority": 2, "collect_limit": 20},
+            {"id": "핫게시글", "path": "hot.php?category=2", "priority": 1, "collect_limit": 30},
+            {"id": "인기글", "path": "hot.php?category=1", "priority": 2, "collect_limit": 30},
         ],
         "collect_interval_minutes": 30,
     },
