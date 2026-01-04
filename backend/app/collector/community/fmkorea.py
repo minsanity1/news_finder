@@ -3,8 +3,11 @@
 """
 from datetime import datetime, timedelta
 from typing import List, Optional
+import asyncio
+import random
 import re
 
+import httpx
 from bs4 import BeautifulSoup
 
 from .base import BaseCommunityCollector, CommunityPost
@@ -16,7 +19,40 @@ class FMKoreaCollector(BaseCommunityCollector):
 
     SOURCE_NAME = "에펨코리아"
     BASE_URL = "https://www.fmkorea.com"
-    REQUEST_DELAY = (1.5, 3.0)  # 에펨코리아는 좀 더 조심
+    REQUEST_DELAY = (0.8, 1.6)  # 성공한 크롤러와 동일
+
+    def __init__(self):
+        # FMKorea 전용 헤더 (Referer 필수!)
+        self.client = httpx.AsyncClient(
+            timeout=25.0,
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/120.0 Safari/537.36"
+                ),
+                "Referer": "https://www.fmkorea.com/",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                "Accept-Language": "ko,en;q=0.8",
+            },
+            follow_redirects=True
+        )
+
+    async def _request_with_retry(self, url: str, max_retry: int = 4) -> httpx.Response:
+        """재시도 로직이 포함된 요청"""
+        last_err = None
+        for attempt in range(1, max_retry + 1):
+            try:
+                await asyncio.sleep(random.uniform(*self.REQUEST_DELAY))
+                resp = await self.client.get(url)
+                if resp.status_code == 200 and resp.text:
+                    return resp
+                last_err = RuntimeError(f"Bad status {resp.status_code}")
+            except Exception as e:
+                last_err = e
+            # 지수 백오프
+            await asyncio.sleep(random.uniform(0.6, 1.2) * attempt)
+        raise last_err
 
     def _get_board_url(self, board_id: str, page: int = 1) -> str:
         """게시판 URL 생성"""
@@ -37,13 +73,12 @@ class FMKoreaCollector(BaseCommunityCollector):
         print(f"[{self.SOURCE_NAME}] Fetching: {url}")
 
         try:
-            response = await self._request_with_delay(url)
-            response.raise_for_status()
+            response = await self._request_with_retry(url)
         except Exception as e:
             print(f"[{self.SOURCE_NAME}] Request failed: {e}")
             return []
 
-        soup = BeautifulSoup(response.text, "html.parser")
+        soup = BeautifulSoup(response.text, "lxml")
         posts = []
 
         # 게시글 목록: div.fm_best_widget li.li 또는 li.li > div.li
@@ -147,12 +182,11 @@ class FMKoreaCollector(BaseCommunityCollector):
     async def get_post_detail(self, post_url: str) -> CommunityPost:
         """게시글 상세 파싱"""
         try:
-            response = await self._request_with_delay(post_url)
-            response.raise_for_status()
+            response = await self._request_with_retry(post_url)
         except Exception as e:
             raise Exception(f"Request failed: {e}")
 
-        soup = BeautifulSoup(response.text, "html.parser")
+        soup = BeautifulSoup(response.text, "lxml")
 
         # 제목
         title_elem = (

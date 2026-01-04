@@ -6,7 +6,7 @@
 COMMUNITY_BOARDS = {
     "fmkorea": {
         "name": "에펨코리아",
-        "enabled": False,  # 430 봇 차단으로 비활성화
+        "enabled": True,  # Referer 헤더 + 재시도 로직으로 해결
         "boards": [
             {"id": "유머인기", "path": "humor?sort_index=pop", "priority": 1, "collect_limit": 30},
             {"id": "핫이슈", "path": "index.php?mid=best", "priority": 2, "collect_limit": 20},
