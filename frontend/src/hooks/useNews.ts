@@ -1,5 +1,6 @@
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { newsApi } from '../api/client';
+import { newsApi, rankingApi } from '../api/client';
 import type { NewsFilter, News } from '../types';
 
 export function useNewsList(filter: NewsFilter) {
@@ -54,4 +55,66 @@ export function useNewsCategories() {
     queryFn: () => newsApi.getCategories(),
     staleTime: 1000 * 60 * 30, // 30분
   });
+}
+
+// 앱 시작 시 자동 수집
+export function useAutoCollect() {
+  const queryClient = useQueryClient();
+  const [isCollecting, setIsCollecting] = useState(false);
+  const [lastCollected, setLastCollected] = useState<Date | null>(null);
+
+  // 마지막 수집 시간 체크 (로컬스토리지)
+  useEffect(() => {
+    const stored = localStorage.getItem('lastNewsCollect');
+    if (stored) {
+      setLastCollected(new Date(stored));
+    }
+  }, []);
+
+  // 자동 수집 실행
+  useEffect(() => {
+    const shouldCollect = () => {
+      if (!lastCollected) return true; // 처음 실행
+
+      const now = new Date();
+      const diff = now.getTime() - lastCollected.getTime();
+      const hoursDiff = diff / (1000 * 60 * 60);
+
+      return hoursDiff >= 1; // 1시간마다 자동 수집
+    };
+
+    const autoCollect = async () => {
+      if (!shouldCollect() || isCollecting) return;
+
+      setIsCollecting(true);
+      console.log('[AutoCollect] Starting automatic news collection...');
+
+      try {
+        // 랭킹 뉴스 수집 (조회수 기준, 전체 언론사, 10개씩)
+        const result = await rankingApi.collect({
+          ranking_type: 'popular',
+          limit_per_press: 10,
+          save_to_db: true,
+        });
+
+        console.log(`[AutoCollect] Collected: ${result.collected}, Saved: ${result.saved}`);
+
+        // 수집 시간 저장
+        const now = new Date();
+        localStorage.setItem('lastNewsCollect', now.toISOString());
+        setLastCollected(now);
+
+        // 뉴스 목록 새로고침
+        queryClient.invalidateQueries({ queryKey: ['news'] });
+      } catch (error) {
+        console.error('[AutoCollect] Failed:', error);
+      } finally {
+        setIsCollecting(false);
+      }
+    };
+
+    autoCollect();
+  }, [lastCollected, isCollecting, queryClient]);
+
+  return { isCollecting, lastCollected };
 }
