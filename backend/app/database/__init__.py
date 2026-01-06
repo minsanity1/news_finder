@@ -1,8 +1,17 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
+from pathlib import Path
 from app.config import get_settings
 
 settings = get_settings()
+
+# 데이터베이스 디렉토리 자동 생성
+db_url = settings.database_url
+if "sqlite" in db_url:
+    # sqlite+aiosqlite:///./data/news.db → ./data/news.db
+    db_path = db_url.split("///")[-1]
+    db_dir = Path(db_path).parent
+    db_dir.mkdir(parents=True, exist_ok=True)
 
 engine = create_async_engine(
     settings.database_url,
