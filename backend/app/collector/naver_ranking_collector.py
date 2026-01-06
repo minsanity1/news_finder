@@ -147,41 +147,36 @@ class NaverRankingCollector:
         ranking_date: date,
         limit: int
     ) -> List[RankingNews]:
-        """랭킹 페이지 HTML 파싱"""
+        """랭킹 페이지 HTML 파싱
+
+        구조:
+        - ul.press_ranking_list > li (1~10위, 11~20위 별도 박스)
+        - em.list_ranking_num: 순위
+        - strong.list_title: 제목
+        - li > a[href]: 링크
+        - div.list_img img: 썸네일
+        - span.list_view: 조회수 (일부 언론사만)
+        """
         soup = BeautifulSoup(html, "lxml")
         results = []
 
-        # 네이버 미디어 랭킹 페이지 셀렉터들 (여러 패턴 시도)
-        selectors = [
-            # 현재 네이버 미디어 구조 (2024-2025)
-            "ul.press_ranking_list > li",
-            "div.press_ranking_list li",
-            # 대안 구조들
-            "div.ranking_list li",
-            "ul.ranking_news li",
-            "div.list_ranking li",
-            # 일반적인 뉴스 목록 구조
-            "ul.type_list li",
-            "div.news_list li",
-        ]
-
-        ranking_items = []
-        for selector in selectors:
-            ranking_items = soup.select(selector)
-            if ranking_items:
-                print(f"[Ranking] Found {len(ranking_items)} items with selector: {selector}")
-                break
+        # 모든 랭킹 박스에서 아이템 수집 (1~10, 11~20)
+        ranking_items = soup.select("ul.press_ranking_list > li")
 
         if not ranking_items:
-            # 최후 수단: a 태그 중 article URL 패턴 찾기
-            print("[Ranking] Trying fallback: article links")
-            ranking_items = soup.select("a[href*='/article/']")
+            print(f"[Ranking] No items found with primary selector, trying fallbacks...")
+            # 대안 셀렉터
+            for selector in ["div.press_ranking_list li", "div.ranking_list li"]:
+                ranking_items = soup.select(selector)
+                if ranking_items:
+                    break
 
-        for idx, item in enumerate(ranking_items[:limit], start=1):
+        print(f"[Ranking] Found {len(ranking_items)} items from {press_info.name}")
+
+        for li in ranking_items[:limit]:
             try:
                 news = self._parse_ranking_item(
-                    item=item,
-                    rank=idx,
+                    li=li,
                     press_info=press_info,
                     ranking_type=ranking_type,
                     ranking_date=ranking_date
@@ -189,7 +184,7 @@ class NaverRankingCollector:
                 if news:
                     results.append(news)
             except Exception as e:
-                print(f"[Ranking] Failed to parse item {idx}: {e}")
+                print(f"[Ranking] Failed to parse item: {e}")
                 continue
 
         print(f"[Ranking] Parsed {len(results)} news from {press_info.name}")
@@ -197,76 +192,77 @@ class NaverRankingCollector:
 
     def _parse_ranking_item(
         self,
-        item,
-        rank: int,
+        li,
         press_info: PressInfo,
         ranking_type: str,
         ranking_date: date
     ) -> Optional[RankingNews]:
-        """개별 랭킹 아이템 파싱"""
+        """개별 랭킹 아이템 파싱
+
+        HTML 구조:
+        <li class="as_thumb">
+            <a href="https://n.news.naver.com/article/092/0002404783?ntype=RANKING">
+                <em class="list_ranking_num">1</em>
+                <div class="list_content">
+                    <strong class="list_title">제목...</strong>
+                    <span class="list_view">14,828</span>  <!-- 일부 언론사만 -->
+                </div>
+                <div class="list_img">
+                    <img src="...">
+                </div>
+            </a>
+        </li>
+        """
+
+        # 순위 추출
+        rank_elem = li.select_one("em.list_ranking_num")
+        rank = int(rank_elem.get_text(strip=True)) if rank_elem else 0
 
         # 제목 추출
-        title_selectors = [
-            "a.list_title",
-            "strong.list_title",
-            "a.news_tit",
-            "span.title",
-            "a",  # fallback
-        ]
-
-        title = ""
-        link_elem = None
-
-        for sel in title_selectors:
-            elem = item.select_one(sel)
-            if elem:
-                title = elem.get_text(strip=True)
-                if elem.name == "a":
-                    link_elem = elem
-                if title:
-                    break
+        title_elem = li.select_one("strong.list_title")
+        title = title_elem.get_text(strip=True) if title_elem else ""
 
         if not title:
             return None
 
         # URL 추출
-        if not link_elem:
-            link_elem = item.select_one("a[href]")
+        link_elem = li.select_one("a[href]")
+        url = link_elem.get("href", "") if link_elem else ""
 
-        href = link_elem.get("href", "") if link_elem else ""
-
-        if not href:
+        if not url:
             return None
 
-        # 전체 URL로 변환
-        if href.startswith("/"):
-            href = "https://media.naver.com" + href
-        elif not href.startswith("http"):
-            href = "https://n.news.naver.com/article/" + href
-
-        # 조회수 추출
-        view_count = self._extract_count(item, ["조회", "view", "읽음", "hit"])
-
-        # 댓글수 추출
-        comment_count = self._extract_count(item, ["댓글", "comment", "의견"])
+        # 전체 URL로 변환 (상대 경로 처리)
+        if url.startswith("/"):
+            url = "https://media.naver.com" + url
 
         # 썸네일 추출
-        thumb_elem = item.select_one("img")
+        img_elem = li.select_one("div.list_img img")
         thumbnail_url = None
-        if thumb_elem:
-            thumbnail_url = thumb_elem.get("src") or thumb_elem.get("data-src")
+        if img_elem:
+            thumbnail_url = img_elem.get("src") or img_elem.get("data-src")
+
+        # 조회수 추출 (일부 언론사만 제공)
+        view_count = None
+        view_elem = li.select_one("span.list_view")
+        if view_elem:
+            view_text = view_elem.get_text(strip=True)
+            # "14,828" 또는 "조회수 14,828" → 14828
+            view_text = view_text.replace("조회수", "").replace(",", "").strip()
+            if view_text.isdigit():
+                view_count = int(view_text)
 
         return RankingNews(
             rank=rank,
             title=title,
-            url=href,
+            url=url,
             source=press_info.name,
             source_id=press_info.id,
             category=press_info.category,
             ranking_type=ranking_type,
             ranking_date=ranking_date,
             view_count=view_count,
-            comment_count=comment_count,
+            comment_count=None,  # 랭킹 페이지에서는 댓글수 미제공
             thumbnail_url=thumbnail_url,
         )
 
