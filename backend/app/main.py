@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from app.config import get_settings
 from app.database import init_db
-from app.api import news, filters, ai, search, community
+from app.api import news, filters, ai, search, community, ranking
 
 
 settings = get_settings()
@@ -40,6 +40,7 @@ app.include_router(filters.router, prefix="/api/filters", tags=["filters"])
 app.include_router(ai.router, prefix="/api/ai", tags=["ai"])
 app.include_router(search.router, prefix="/api/search", tags=["search"])
 app.include_router(community.router, prefix="/api/community", tags=["community"])
+app.include_router(ranking.router, prefix="/api/ranking", tags=["ranking"])
 
 
 @app.get("/")
