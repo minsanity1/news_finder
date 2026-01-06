@@ -90,9 +90,9 @@ export function useAutoCollect() {
       console.log('[AutoCollect] Starting automatic news collection...');
 
       try {
-        // 랭킹 뉴스 수집 (조회수 기준, 전체 언론사, 10개씩)
+        // 랭킹 뉴스 수집 (조회수 + 댓글수 둘 다, 전체 언론사, 10개씩)
         const result = await rankingApi.collect({
-          ranking_type: 'popular',
+          ranking_type: 'all',  // popular + comment 둘 다
           limit_per_press: 10,
           save_to_db: true,
         });
