@@ -1,14 +1,12 @@
 import { useState } from 'react';
-import { Settings, AlertTriangle, TrendingUp, HelpCircle, Users, Newspaper, MessageSquare } from 'lucide-react';
+import { Settings, AlertTriangle, HelpCircle, Users, Newspaper, MessageSquare } from 'lucide-react';
 import { useAIUsage } from '../hooks/useAIAnalysis';
 import { useFilterStore } from '../stores/filterStore';
-import SearchModal from './SearchModal';
 import SettingsModal from './SettingsModal';
 import HelpModal from './HelpModal';
 import CommunityModal from './CommunityModal';
 
 export default function Header() {
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCommunityOpen, setIsCommunityOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
@@ -48,19 +46,9 @@ export default function Header() {
             {/* 뉴스/커뮤니티 탭 */}
             <div className="flex items-center bg-gray-100 rounded-lg p-1">
               <button
-                onClick={() => setFilter({ source_type: undefined, source: '' })}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  !filter.source_type
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                전체
-              </button>
-              <button
                 onClick={() => setFilter({ source_type: 'news', source: '' })}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  filter.source_type === 'news'
+                  filter.source_type === 'news' || !filter.source_type
                     ? 'bg-white text-blue-600 shadow-sm'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
@@ -96,14 +84,6 @@ export default function Header() {
             )}
 
             <button
-              onClick={() => setIsSearchOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              <TrendingUp className="w-4 h-4" />
-              뉴스 수집
-            </button>
-
-            <button
               onClick={() => setIsCommunityOpen(true)}
               className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
             >
@@ -130,7 +110,6 @@ export default function Header() {
         </div>
       </header>
 
-      <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
       <CommunityModal isOpen={isCommunityOpen} onClose={() => setIsCommunityOpen(false)} />
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />

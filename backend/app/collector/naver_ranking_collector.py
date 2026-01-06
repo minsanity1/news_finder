@@ -377,7 +377,7 @@ class NaverRankingCollector:
             "published_at": datetime.combine(ranking_news.ranking_date, datetime.min.time()),
             "view_count": ranking_news.view_count,
             "comment_count": ranking_news.comment_count,
-            "source_type": "ranking",
+            "source_type": "news",  # 뉴스 탭에서 표시되도록
         }
 
     async def close(self):
