@@ -265,4 +265,77 @@ export const communityApi = {
   },
 };
 
+// Ranking API (네이버 뉴스 랭킹 수집)
+export interface PressInfo {
+  id: string;
+  name: string;
+  category: string;
+  priority: number;
+  enabled: boolean;
+}
+
+export interface RankingCollectResponse {
+  collected: number;
+  saved: number;
+  duplicates: number;
+  by_press: Record<string, number>;
+}
+
+export const rankingApi = {
+  getPressList: async (): Promise<PressInfo[]> => {
+    const response = await api.get('/ranking/press-list');
+    return response.data;
+  },
+
+  getRankingTypes: async (): Promise<Record<string, string>> => {
+    const response = await api.get('/ranking/ranking-types');
+    return response.data;
+  },
+
+  getStatus: async (): Promise<{
+    total_press: number;
+    enabled_press: number;
+    by_category: Record<string, number>;
+    ranking_types: string[];
+  }> => {
+    const response = await api.get('/ranking/status');
+    return response.data;
+  },
+
+  collect: async (params: {
+    press_ids?: string[];
+    ranking_type: string;
+    target_date?: string;
+    limit_per_press?: number;
+    save_to_db?: boolean;
+  }): Promise<RankingCollectResponse> => {
+    const response = await api.post('/ranking/collect', {
+      press_ids: params.press_ids,
+      ranking_type: params.ranking_type,
+      target_date: params.target_date,
+      limit_per_press: params.limit_per_press ?? 10,
+      save_to_db: params.save_to_db ?? true,
+    });
+    return response.data;
+  },
+
+  preview: async (
+    pressId: string,
+    rankingType: string = 'popular',
+    limit: number = 10
+  ): Promise<Array<{
+    rank: number;
+    title: string;
+    url: string;
+    source: string;
+    category: string;
+    ranking_type: string;
+    view_count: number | null;
+    comment_count: number | null;
+  }>> => {
+    const response = await api.get(`/ranking/preview/${pressId}?ranking_type=${rankingType}&limit=${limit}`);
+    return response.data;
+  },
+};
+
 export default api;

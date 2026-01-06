@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Settings, AlertTriangle, Search, HelpCircle, Users, Newspaper, MessageSquare } from 'lucide-react';
+import { Settings, AlertTriangle, TrendingUp, HelpCircle, Users, Newspaper, MessageSquare } from 'lucide-react';
 import { useAIUsage } from '../hooks/useAIAnalysis';
 import { useFilterStore } from '../stores/filterStore';
 import SearchModal from './SearchModal';
@@ -99,8 +99,8 @@ export default function Header() {
               onClick={() => setIsSearchOpen(true)}
               className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
             >
-              <Search className="w-4 h-4" />
-              Search
+              <TrendingUp className="w-4 h-4" />
+              뉴스 수집
             </button>
 
             <button
