@@ -173,16 +173,18 @@ class NewsRepository:
         )
         return result.scalars().all()
 
-    async def get_sources(self) -> List[str]:
-        result = await self.session.execute(
-            select(News.source).distinct().where(News.source.isnot(None))
-        )
+    async def get_sources(self, source_type: Optional[str] = None) -> List[str]:
+        query = select(News.source).distinct().where(News.source.isnot(None))
+        if source_type:
+            query = query.where(News.source_type == source_type)
+        result = await self.session.execute(query)
         return [r[0] for r in result.all()]
 
-    async def get_categories(self) -> List[str]:
-        result = await self.session.execute(
-            select(News.category).distinct().where(News.category.isnot(None))
-        )
+    async def get_categories(self, source_type: Optional[str] = None) -> List[str]:
+        query = select(News.category).distinct().where(News.category.isnot(None))
+        if source_type:
+            query = query.where(News.source_type == source_type)
+        result = await self.session.execute(query)
         return [r[0] for r in result.all()]
 
 

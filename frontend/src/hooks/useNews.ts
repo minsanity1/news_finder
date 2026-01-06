@@ -41,18 +41,18 @@ export function useDeleteNews() {
   });
 }
 
-export function useNewsSources() {
+export function useNewsSources(sourceType?: string) {
   return useQuery({
-    queryKey: ['news', 'sources'],
-    queryFn: () => newsApi.getSources(),
+    queryKey: ['news', 'sources', sourceType],
+    queryFn: () => newsApi.getSources(sourceType),
     staleTime: 1000 * 60 * 30, // 30분
   });
 }
 
-export function useNewsCategories() {
+export function useNewsCategories(sourceType?: string) {
   return useQuery({
-    queryKey: ['news', 'categories'],
-    queryFn: () => newsApi.getCategories(),
+    queryKey: ['news', 'categories', sourceType],
+    queryFn: () => newsApi.getCategories(sourceType),
     staleTime: 1000 * 60 * 30, // 30분
   });
 }

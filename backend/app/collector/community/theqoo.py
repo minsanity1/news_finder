@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from typing import List, Optional
 import re
 
+import httpx
 from bs4 import BeautifulSoup
 
 from .base import BaseCommunityCollector, CommunityPost
@@ -17,6 +18,23 @@ class TheqooCollector(BaseCommunityCollector):
     SOURCE_NAME = "더쿠"
     BASE_URL = "https://theqoo.net"
     REQUEST_DELAY = (1.0, 2.0)
+
+    def __init__(self):
+        # 더쿠 전용 헤더 (Referer 필수!)
+        self.client = httpx.AsyncClient(
+            timeout=30.0,
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/120.0.0.0 Safari/537.36"
+                ),
+                "Referer": "https://theqoo.net/",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+            },
+            follow_redirects=True
+        )
 
     def _get_board_url(self, board_id: str, page: int = 1) -> str:
         """게시판 URL 생성"""

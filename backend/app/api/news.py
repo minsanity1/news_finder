@@ -136,18 +136,24 @@ async def get_news_list(
 
 
 @router.get("/sources")
-async def get_sources(db: AsyncSession = Depends(get_db)):
-    """수집된 뉴스의 언론사 목록"""
+async def get_sources(
+    source_type: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """수집된 뉴스의 언론사 목록 (source_type으로 필터링 가능)"""
     repo = NewsRepository(db)
-    sources = await repo.get_sources()
+    sources = await repo.get_sources(source_type=source_type)
     return {"sources": sources}
 
 
 @router.get("/categories")
-async def get_categories(db: AsyncSession = Depends(get_db)):
-    """수집된 뉴스의 카테고리 목록"""
+async def get_categories(
+    source_type: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """수집된 뉴스의 카테고리 목록 (source_type으로 필터링 가능)"""
     repo = NewsRepository(db)
-    categories = await repo.get_categories()
+    categories = await repo.get_categories(source_type=source_type)
     return {"categories": categories}
 
 

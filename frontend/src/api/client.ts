@@ -60,13 +60,15 @@ export const newsApi = {
     await api.delete(`/news/${id}`);
   },
 
-  getSources: async (): Promise<string[]> => {
-    const response = await api.get('/news/sources');
+  getSources: async (sourceType?: string): Promise<string[]> => {
+    const params = sourceType ? `?source_type=${sourceType}` : '';
+    const response = await api.get(`/news/sources${params}`);
     return response.data.sources;
   },
 
-  getCategories: async (): Promise<string[]> => {
-    const response = await api.get('/news/categories');
+  getCategories: async (sourceType?: string): Promise<string[]> => {
+    const params = sourceType ? `?source_type=${sourceType}` : '';
+    const response = await api.get(`/news/categories${params}`);
     return response.data.categories;
   },
 };

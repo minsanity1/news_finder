@@ -6,8 +6,9 @@ import { useNewsSources, useNewsCategories } from '../hooks/useNews';
 export default function FilterPanel() {
   const { filter, setFilter, resetFilter } = useFilterStore();
   const { openModal } = useAIFilterModalStore();
-  const { data: sources = [] } = useNewsSources();
-  const { data: categories = [] } = useNewsCategories();
+  // source_type에 따라 필터링된 sources/categories 가져오기
+  const { data: sources = [] } = useNewsSources(filter.source_type);
+  const { data: categories = [] } = useNewsCategories(filter.source_type);
 
   const [keyword, setKeyword] = useState(filter.keyword || '');
   const [isExpanded, setIsExpanded] = useState(true);
