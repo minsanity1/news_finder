@@ -149,11 +149,24 @@ async def collect_ranking_news(
                 if news.source not in by_press:
                     by_press[news.source] = 0
 
-                # DB 중복 체크
+                # DB 중복 체크 및 카운트 병합
                 try:
                     existing = await news_repo.get_by_url(news_dict["url"])
                     if existing:
-                        duplicates += 1
+                        # 기존 레코드가 있으면 카운트 병합
+                        update_data = {}
+                        if news_dict.get("view_count") and not existing.view_count:
+                            update_data["view_count"] = news_dict["view_count"]
+                        if news_dict.get("comment_count") and not existing.comment_count:
+                            update_data["comment_count"] = news_dict["comment_count"]
+
+                        if update_data:
+                            # 새로운 카운트가 있으면 업데이트
+                            await news_repo.update(existing.id, update_data)
+                            saved += 1  # 업데이트도 saved로 카운트
+                            by_press[news.source] += 1
+                        else:
+                            duplicates += 1
                         continue
 
                     await news_repo.create(news_dict)

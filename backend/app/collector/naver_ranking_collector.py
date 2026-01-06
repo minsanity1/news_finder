@@ -242,15 +242,22 @@ class NaverRankingCollector:
         if img_elem:
             thumbnail_url = img_elem.get("src") or img_elem.get("data-src")
 
-        # 조회수 추출 (일부 언론사만 제공)
+        # 조회수/댓글수 추출 (일부 언론사만 제공)
+        # 랭킹 타입에 따라 적절한 필드에 저장
         view_count = None
-        view_elem = li.select_one("span.list_view")
-        if view_elem:
-            view_text = view_elem.get_text(strip=True)
+        comment_count = None
+        count_elem = li.select_one("span.list_view")
+        if count_elem:
+            count_text = count_elem.get_text(strip=True)
             # "14,828" 또는 "조회수 14,828" → 14828
-            view_text = view_text.replace("조회수", "").replace(",", "").strip()
-            if view_text.isdigit():
-                view_count = int(view_text)
+            count_text = count_text.replace("조회수", "").replace("댓글", "").replace(",", "").strip()
+            if count_text.isdigit():
+                count_value = int(count_text)
+                # 랭킹 타입에 따라 view_count 또는 comment_count에 저장
+                if ranking_type == "comment":
+                    comment_count = count_value
+                else:
+                    view_count = count_value
 
         return RankingNews(
             rank=rank,
@@ -262,7 +269,7 @@ class NaverRankingCollector:
             ranking_type=ranking_type,
             ranking_date=ranking_date,
             view_count=view_count,
-            comment_count=None,  # 랭킹 페이지에서는 댓글수 미제공
+            comment_count=comment_count,
             thumbnail_url=thumbnail_url,
         )
 

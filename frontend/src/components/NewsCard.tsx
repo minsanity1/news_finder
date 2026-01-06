@@ -196,8 +196,9 @@ export default function NewsCard({ news, isSelected, onSelect }: NewsCardProps) 
         </div>
 
         <div className="flex items-center gap-3">
-          {/* 커뮤니티 메타 정보 */}
-          {news.source_type === 'community' && (
+          {/* 조회수/댓글수 메타 정보 (커뮤니티 & 랭킹) */}
+          {(news.source_type === 'community' || news.source_type === 'ranking' ||
+            news.view_count || news.comment_count || news.like_count) && (
             <div className="flex items-center gap-2 text-gray-500">
               {news.view_count !== null && news.view_count > 0 && (
                 <span className="flex items-center gap-0.5" title="조회수">
