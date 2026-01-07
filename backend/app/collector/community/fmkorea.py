@@ -14,44 +14,120 @@ from .base import BaseCommunityCollector, CommunityPost
 from .config import COMMUNITY_BOARDS
 
 
+# 최신 브라우저 User-Agent 목록 (2024-2025)
+USER_AGENTS = [
+    # Chrome Windows
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+    # Chrome Mac
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    # Firefox
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0",
+    # Edge
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0",
+]
+
+
 class FMKoreaCollector(BaseCommunityCollector):
     """에펨코리아 커뮤니티 수집기"""
 
     SOURCE_NAME = "에펨코리아"
     BASE_URL = "https://www.fmkorea.com"
-    REQUEST_DELAY = (0.8, 1.6)  # 성공한 크롤러와 동일
+    REQUEST_DELAY = (1.0, 2.0)  # 조금 더 느리게
 
     def __init__(self):
-        # FMKorea 전용 헤더 (Referer 필수!)
-        self.client = httpx.AsyncClient(
-            timeout=25.0,
-            headers={
-                "User-Agent": (
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/120.0 Safari/537.36"
-                ),
-                "Referer": "https://www.fmkorea.com/",
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-                "Accept-Language": "ko,en;q=0.8",
-            },
-            follow_redirects=True
-        )
+        # 랜덤 User-Agent 선택
+        user_agent = random.choice(USER_AGENTS)
 
-    async def _request_with_retry(self, url: str, max_retry: int = 4) -> httpx.Response:
+        # FMKorea 전용 헤더 - 실제 브라우저와 유사하게
+        self.client = httpx.AsyncClient(
+            timeout=30.0,
+            headers={
+                "User-Agent": user_agent,
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+                "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+                "Accept-Encoding": "gzip, deflate, br",
+                "Cache-Control": "max-age=0",
+                "Connection": "keep-alive",
+                "Sec-Ch-Ua": '"Chromium";v="131", "Not_A Brand";v="24"',
+                "Sec-Ch-Ua-Mobile": "?0",
+                "Sec-Ch-Ua-Platform": '"Windows"',
+                "Sec-Fetch-Dest": "document",
+                "Sec-Fetch-Mode": "navigate",
+                "Sec-Fetch-Site": "same-origin",
+                "Sec-Fetch-User": "?1",
+                "Upgrade-Insecure-Requests": "1",
+            },
+            follow_redirects=True,
+            http2=True,  # HTTP/2 지원
+        )
+        self._cookies_initialized = False
+
+    async def _init_session(self):
+        """첫 요청 전 세션 초기화 (쿠키 획득)"""
+        if self._cookies_initialized:
+            return
+
+        try:
+            # 메인 페이지 방문하여 쿠키 획득
+            await asyncio.sleep(random.uniform(0.5, 1.0))
+            resp = await self.client.get(
+                self.BASE_URL,
+                headers={"Referer": "https://www.google.com/"}
+            )
+            if resp.status_code == 200:
+                self._cookies_initialized = True
+                print(f"[{self.SOURCE_NAME}] Session initialized, cookies obtained")
+        except Exception as e:
+            print(f"[{self.SOURCE_NAME}] Session init warning: {e}")
+
+    async def _request_with_retry(self, url: str, max_retry: int = 4, referer: str = None) -> httpx.Response:
         """재시도 로직이 포함된 요청"""
+        # 세션 초기화
+        await self._init_session()
+
         last_err = None
+        headers = {}
+        if referer:
+            headers["Referer"] = referer
+        else:
+            headers["Referer"] = f"{self.BASE_URL}/"
+
         for attempt in range(1, max_retry + 1):
             try:
-                await asyncio.sleep(random.uniform(*self.REQUEST_DELAY))
-                resp = await self.client.get(url)
+                # 요청 간격 (시도할수록 더 긴 간격)
+                delay = random.uniform(*self.REQUEST_DELAY) * (1 + attempt * 0.3)
+                await asyncio.sleep(delay)
+
+                resp = await self.client.get(url, headers=headers)
+
+                # Cloudflare 차단 감지
+                if resp.status_code == 403:
+                    if "cloudflare" in resp.text.lower() or "cf-ray" in resp.headers.get("server", "").lower():
+                        print(f"[{self.SOURCE_NAME}] Cloudflare block detected, attempt {attempt}")
+                        last_err = RuntimeError("Cloudflare blocked")
+                        continue
+                    print(f"[{self.SOURCE_NAME}] 403 Forbidden, attempt {attempt}")
+                    last_err = RuntimeError("403 Forbidden")
+                    continue
+
                 if resp.status_code == 200 and resp.text:
+                    # 차단 페이지인지 확인
+                    if "차단" in resp.text[:1000] or "접근이 거부" in resp.text[:1000]:
+                        print(f"[{self.SOURCE_NAME}] Access denied page detected")
+                        last_err = RuntimeError("Access denied")
+                        continue
                     return resp
+
                 last_err = RuntimeError(f"Bad status {resp.status_code}")
+
             except Exception as e:
+                print(f"[{self.SOURCE_NAME}] Request error (attempt {attempt}): {e}")
                 last_err = e
+
             # 지수 백오프
-            await asyncio.sleep(random.uniform(0.6, 1.2) * attempt)
+            await asyncio.sleep(random.uniform(1.0, 2.0) * attempt)
+
         raise last_err
 
     def _get_board_url(self, board_id: str, page: int = 1) -> str:
@@ -81,20 +157,41 @@ class FMKoreaCollector(BaseCommunityCollector):
         soup = BeautifulSoup(response.text, "lxml")
         posts = []
 
-        # 게시글 목록: div.fm_best_widget li.li 또는 li.li > div.li
+        # 게시글 목록: 여러 선택자 시도
         rows = soup.select("div.fm_best_widget li.li")
         if not rows:
-            # fallback: 기존 선택자
+            rows = soup.select("ul.li li.li")
+        if not rows:
             rows = soup.select("li.li")
+        if not rows:
+            # 테이블 형식 (best 게시판)
+            rows = soup.select("table.bd_lst tbody tr")
+
+        # 디버깅: 구조 변경 감지
+        if not rows:
+            print(f"[{self.SOURCE_NAME}] WARNING: No rows found!")
+            # 페이지 구조 확인용 출력
+            body_classes = soup.body.get("class", []) if soup.body else []
+            print(f"[{self.SOURCE_NAME}] Body classes: {body_classes}")
+            # 주요 컨테이너 확인
+            main_containers = soup.select("div.content_container, div.best_widget, div#content")
+            print(f"[{self.SOURCE_NAME}] Main containers found: {len(main_containers)}")
+            # HTML 일부 저장 (디버깅용)
+            if len(response.text) < 5000:
+                print(f"[{self.SOURCE_NAME}] Full HTML (short): {response.text}")
+            return []
+
         print(f"[{self.SOURCE_NAME}] Found {len(rows)} rows")
 
         for row in rows:
             try:
-                # 제목: span.ellipsis-target
-                title_elem = row.select_one("span.ellipsis-target")
-                if not title_elem:
-                    # fallback
-                    title_elem = row.select_one("h3.title a")
+                # 제목 추출: 여러 선택자 시도
+                title_elem = (
+                    row.select_one("span.ellipsis-target") or
+                    row.select_one("h3.title a") or
+                    row.select_one("td.title a") or  # 테이블 형식
+                    row.select_one("a.hx")  # 대체 형식
+                )
 
                 if not title_elem:
                     continue
@@ -103,10 +200,14 @@ class FMKoreaCollector(BaseCommunityCollector):
                 if not title:
                     continue
 
-                # 링크: h3.title a[href]
-                link_elem = row.select_one("h3.title a")
-                if not link_elem:
-                    link_elem = row.select_one("a.title")
+                # 링크 추출: 여러 선택자 시도
+                link_elem = (
+                    row.select_one("h3.title a") or
+                    row.select_one("td.title a") or  # 테이블 형식
+                    row.select_one("a.title") or
+                    row.select_one("a.hx") or
+                    title_elem if title_elem.name == "a" else None
+                )
 
                 if not link_elem:
                     continue
@@ -123,19 +224,27 @@ class FMKoreaCollector(BaseCommunityCollector):
                 else:
                     full_url = href
 
-                # 추천수: span.count 또는 a.pc_voted_count span.count
+                # 추천수: 여러 선택자 시도
                 like_count = 0
-                like_elem = row.select_one("span.count")
+                like_elem = (
+                    row.select_one("span.count") or
+                    row.select_one("td.m_no") or  # 테이블 형식
+                    row.select_one(".vote")
+                )
                 if like_elem:
                     num = re.sub(r"[^\d]", "", like_elem.get_text())
                     like_count = int(num) if num else 0
 
-                # 댓글수: span.comment_count (대괄호 포함, 예: [15])
+                # 댓글수: 여러 선택자 시도
                 comment_count = 0
-                comment_elem = row.select_one("span.comment_count")
+                comment_elem = (
+                    row.select_one("span.comment_count") or
+                    row.select_one("a.replyNum") or  # 테이블 형식
+                    row.select_one(".reply_count")
+                )
                 if comment_elem:
                     text = comment_elem.get_text(strip=True)
-                    # 대괄호 제거: [15] -> 15
+                    # 대괄호/괄호 제거: [15] -> 15, (15) -> 15
                     num = re.sub(r"[^\d]", "", text)
                     comment_count = int(num) if num else 0
 
@@ -302,3 +411,7 @@ class FMKoreaCollector(BaseCommunityCollector):
                     return int(num.group(1).replace(",", ""))
 
         return 0
+
+    async def close(self):
+        """클라이언트 연결 종료"""
+        await self.client.aclose()
