@@ -1,24 +1,23 @@
 @echo off
-chcp 65001 > nul
 echo ========================================
-echo   코드 업데이트 시작
+echo   Code Update
 echo ========================================
 
 cd /d "%~dp0"
 
 echo.
-echo [1/3] 원격 저장소에서 변경사항 가져오기...
+echo [1/2] Fetching from remote...
 git fetch origin
 
 echo.
-echo [2/3] 최신 코드로 업데이트...
+echo [2/2] Pulling latest code...
 git pull origin claude/korean-news-ai-filter-8JpiG
 
 echo.
-echo [3/3] 업데이트 완료!
+echo ========================================
+echo   Update Complete!
 echo ========================================
 git log -1 --oneline
-echo ========================================
 
 echo.
 pause
