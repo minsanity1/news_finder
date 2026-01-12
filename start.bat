@@ -4,6 +4,14 @@ echo   News Finder Start
 echo ========================================
 cd /d "%~dp0"
 echo.
+if not exist "backend\venv" (
+    echo [0/2] Creating virtual environment...
+    cd backend
+    python -m venv venv --system-site-packages
+    cd ..
+    echo Virtual environment created\!
+    echo.
+)
 echo [1/2] Starting Backend Server...
 start "Backend" cmd /k "cd /d %~dp0backend && call venv\Scripts\activate.bat && uvicorn app.main:app --reload --port 8000"
 echo Waiting 3 seconds...

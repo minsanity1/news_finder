@@ -12,6 +12,14 @@ git pull origin claude/korean-news-ai-filter-8JpiG
 echo.
 git log -1 --oneline
 echo.
+if not exist "backend\venv" (
+    echo [*] Creating virtual environment...
+    cd backend
+    python -m venv venv --system-site-packages
+    cd ..
+    echo Virtual environment created\!
+    echo.
+)
 echo [3/4] Starting Backend Server...
 start "Backend" cmd /k "cd /d %~dp0backend && call venv\Scripts\activate.bat && uvicorn app.main:app --reload --port 8000"
 echo Waiting 3 seconds...
