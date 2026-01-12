@@ -5,7 +5,7 @@ echo ========================================
 cd /d "%~dp0"
 echo.
 echo [1/2] Starting Backend Server...
-start "Backend" cmd /k "cd /d %~dp0backend && uvicorn app.main:app --reload --port 8000"
+start "Backend" cmd /k "cd /d %~dp0backend && call venv\Scripts\activate.bat && uvicorn app.main:app --reload --port 8000"
 echo Waiting 3 seconds...
 ping 127.0.0.1 -n 4 > nul
 echo.
