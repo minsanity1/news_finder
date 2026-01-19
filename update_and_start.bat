@@ -16,6 +16,8 @@ if not exist "backend\venv" (
     echo [*] Creating virtual environment...
     cd backend
     python -m venv venv --system-site-packages
+    call venv\Scripts\activate.bat
+    pip install -r requirements.txt
     cd ..
     echo Virtual environment created\!
     echo.
