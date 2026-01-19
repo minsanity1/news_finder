@@ -6,7 +6,7 @@ cd /d "%~dp0"
 echo.
 echo [1/4] Creating Backend virtual environment...
 cd backend
-python -m venv venv
+python -m venv venv --system-site-packages
 echo.
 echo [2/4] Activating venv and installing packages...
 call venv\Scripts\activate.bat
